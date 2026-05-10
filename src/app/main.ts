@@ -171,6 +171,14 @@ function placeSelectedShape(): boolean {
   return true
 }
 
+function placeSelectedShapeAt(pos: GridPos): boolean {
+  previewOrigin = pos
+  updatePositionControls?.(previewOrigin)
+  renderSelectedShape()
+
+  return placeSelectedShape()
+}
+
 function deleteSelectedPlacedShape() {
   if (!selectedPlacedShapeId) {
     return
@@ -353,6 +361,8 @@ createGridPointerController({
   domElement: mainScene.renderer.domElement,
   scene: mainScene.scene,
   onHoverCell: previewSelectedShapeAt,
+  onTapCell: placeSelectedShapeAt,
+  shouldHandleTap: (event) => getPlacedShapeIdAtPointer(event) === null,
 })
 
 createPlacedShapeSelectionController()
@@ -361,8 +371,6 @@ renderSelectedShape()
 refreshPlacedShapeState()
 
 function createPlacedShapeSelectionController() {
-  const raycaster = new THREE.Raycaster()
-  const pointer = new THREE.Vector2()
   let pointerDownPos: { x: number, y: number } | null = null
 
   mainScene.renderer.domElement.addEventListener("pointerdown", (event) => {
@@ -380,20 +388,28 @@ function createPlacedShapeSelectionController() {
 
     pointerDownPos = null
 
-    const rect = mainScene.renderer.domElement.getBoundingClientRect()
+    const placedShapeId = getPlacedShapeIdAtPointer(event)
 
-    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-    raycaster.setFromCamera(pointer, mainScene.camera)
-
-    const placedMeshes = placedShapes.flatMap((shape) => (
-      shape.group.children
-    ))
-    const intersections = raycaster.intersectObjects(placedMeshes, false)
-    const placedShapeId = intersections[0]?.object.userData.placedShapeId
-
-    selectPlacedShape(typeof placedShapeId === "string" ? placedShapeId : null)
+    selectPlacedShape(placedShapeId)
   })
+}
+
+function getPlacedShapeIdAtPointer(event: PointerEvent): string | null {
+  const raycaster = new THREE.Raycaster()
+  const pointer = new THREE.Vector2()
+  const rect = mainScene.renderer.domElement.getBoundingClientRect()
+
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  raycaster.setFromCamera(pointer, mainScene.camera)
+
+  const placedMeshes = placedShapes.flatMap((shape) => (
+    shape.group.children
+  ))
+  const intersections = raycaster.intersectObjects(placedMeshes, false)
+  const placedShapeId = intersections[0]?.object.userData.placedShapeId
+
+  return typeof placedShapeId === "string" ? placedShapeId : null
 }
 
 function getPointerDistance(

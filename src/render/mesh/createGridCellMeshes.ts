@@ -7,7 +7,12 @@ export function createGridCellMeshes(bounds: GridBounds): THREE.Group {
 
     const geometry = new THREE.BoxGeometry(1, 1, 1)
     const edgesGeometry = new THREE.EdgesGeometry(geometry)
-    const material = new THREE.LineBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.35, })
+    const material = new THREE.LineBasicMaterial({
+        color: 0x7f8794,
+        transparent: true,
+        opacity: 0.14,
+        depthWrite: false,
+    })
 
     for (let x = 0; x < bounds.width; x++) {
         for (let y = 0; y < bounds.height; y++) {

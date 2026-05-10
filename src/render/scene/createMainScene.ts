@@ -9,13 +9,13 @@ export function createMainScene() {
     scene.background = new THREE.Color(0xD8DEE9)
 
     const camera = new THREE.PerspectiveCamera(
-        75,
+        50,
         window.innerWidth / window.innerHeight,
         0.1,
         1000
     )
 
-    camera.position.set(8, 8, 8)
+    camera.position.set(4.8, 4.6, 5.6)
 
     const renderer = new THREE.WebGLRenderer({
         antialias: true
@@ -28,14 +28,9 @@ export function createMainScene() {
     const controls = new OrbitControls(camera, renderer.domElement)
 
     controls.enableDamping = true
-
-    // const gridHelper = new THREE.GridHelper(10, 10)
-
-    // scene.add(gridHelper)
-
-    const axesHelper = new THREE.AxesHelper(5)
-
-    scene.add(axesHelper)
+    controls.enablePan = false
+    controls.minDistance = 2.2
+    controls.maxDistance = 12
 
     const gridCells = createGridCellMeshes(DEFAULT_GRID_BOUNDS)
     
