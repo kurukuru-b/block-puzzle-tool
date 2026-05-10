@@ -14,8 +14,13 @@ import {
   type ShapeRotation,
 } from "../core/shape/rotateShapeCells"
 import { createGridPointerController } from "../input/createGridPointerController"
-import { isShapeInsideGrid } from "../core/puzzle/shapePlacement"
-import type { GridPos } from "../core/grid/GridPos"
+import {
+  getPlacedCellPositions,
+  hasOverlappingCells,
+  isShapeInsideGrid,
+} from "../core/puzzle/shapePlacement"
+import { gridPosKey, type GridPos } from "../core/grid/GridPos"
+import type { PlacedShape } from "../core/puzzle/PlacedShape"
 
 const mainScene = createMainScene()
 
@@ -30,6 +35,9 @@ let selectedShapeId = ""
 let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
 let previewOrigin: GridPos = { x: 0, y: 0, z: 0 }
 let updatePositionControls: ((pos: GridPos) => void) | null = null
+let updatePlacedCount: ((count: number) => void) | null = null
+const placedShapes: PlacedShape[] = []
+const occupiedCells = new Set<string>()
 
 function renderSelectedShape() {
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
@@ -47,7 +55,7 @@ function renderSelectedShape() {
     previewOrigin,
     rotatedCells,
     DEFAULT_GRID_BOUNDS,
-  )
+  ) && !hasOverlappingCells(previewOrigin, rotatedCells, occupiedCells)
 
   activeShapeGroup = createShapeMeshGroup({
     ...shape,
@@ -84,6 +92,49 @@ function rotateSelectedShape(axis: RotationAxis) {
 function resetSelectedRotation() {
   selectedRotation = { x: 0, y: 0, z: 0 }
   renderSelectedShape()
+}
+
+function placeSelectedShape(): boolean {
+  const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
+
+  if (!shape) {
+    throw new Error(`Shape not found: ${selectedShapeId}`)
+  }
+
+  const rotatedCells = rotateShapeCells(shape.cells, selectedRotation)
+  const isValidPlacement = isShapeInsideGrid(
+    previewOrigin,
+    rotatedCells,
+    DEFAULT_GRID_BOUNDS,
+  ) && !hasOverlappingCells(previewOrigin, rotatedCells, occupiedCells)
+
+  if (!isValidPlacement) {
+    renderSelectedShape()
+    return false
+  }
+
+  placedShapes.push({
+    shapeId: selectedShapeId,
+    origin: { ...previewOrigin },
+    rotation: { ...selectedRotation },
+  })
+
+  for (const pos of getPlacedCellPositions(previewOrigin, rotatedCells)) {
+    occupiedCells.add(gridPosKey(pos))
+  }
+
+  const placedGroup = createShapeMeshGroup({
+    ...shape,
+    cells: rotatedCells,
+  })
+  const worldPos = gridToWorld(previewOrigin, DEFAULT_GRID_BOUNDS)
+
+  placedGroup.position.set(worldPos.x, worldPos.y, worldPos.z)
+  mainScene.scene.add(placedGroup)
+  updatePlacedCount?.(placedShapes.length)
+  renderSelectedShape()
+
+  return true
 }
 
 function previewSelectedShapeAt(pos: GridPos | null) {
@@ -140,9 +191,11 @@ const shapeSelector = createShapeSelector({
   onRotate: rotateSelectedShape,
   onResetRotation: resetSelectedRotation,
   onMovePosition: movePreviewOrigin,
+  onPlaceShape: placeSelectedShape,
 })
 
 updatePositionControls = shapeSelector.setPosition
+updatePlacedCount = shapeSelector.setPlacedCount
 app.appendChild(shapeSelector.element)
 
 createGridPointerController({

@@ -1,6 +1,6 @@
 import type { GridBounds } from "../grid/GridBounds"
 import { isInsideGrid } from "../grid/GridBounds"
-import type { GridPos } from "../grid/GridPos"
+import { gridPosKey, type GridPos } from "../grid/GridPos"
 import type { LocalCellPos } from "../shape/ShapeDefinition"
 
 export function getPlacedCellPositions(
@@ -21,5 +21,15 @@ export function isShapeInsideGrid(
 ): boolean {
   return getPlacedCellPositions(origin, cells).every((pos) => (
     isInsideGrid(pos, bounds)
+  ))
+}
+
+export function hasOverlappingCells(
+  origin: GridPos,
+  cells: LocalCellPos[],
+  occupiedCells: Set<string>,
+): boolean {
+  return getPlacedCellPositions(origin, cells).some((pos) => (
+    occupiedCells.has(gridPosKey(pos))
   ))
 }

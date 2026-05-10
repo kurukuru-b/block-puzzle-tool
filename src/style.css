@@ -88,7 +88,8 @@ button {
 }
 
 .rotation-button,
-.position-button {
+.position-button,
+.place-button {
   justify-content: center;
   font-size: 13px;
   font-weight: 750;
@@ -96,14 +97,16 @@ button {
 
 .shape-button:hover,
 .rotation-button:hover,
-.position-button:hover {
+.position-button:hover,
+.place-button:hover {
   border-color: rgba(50, 61, 76, 0.5);
   background: #ffffff;
 }
 
 .shape-button:focus-visible,
 .rotation-button:focus-visible,
-.position-button:focus-visible {
+.position-button:focus-visible,
+.place-button:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
@@ -181,6 +184,40 @@ button {
   font-weight: 800;
 }
 
+.action-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(105, 114, 130, 0.24);
+}
+
+.place-button {
+  height: 42px;
+  border-color: rgba(37, 99, 235, 0.42);
+  color: #ffffff;
+  background: #2563eb;
+}
+
+.place-button:hover {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.place-button.is-rejected {
+  border-color: rgba(220, 38, 38, 0.5);
+  background: #dc2626;
+}
+
+.placed-count {
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 @media (max-width: 560px) {
   .shape-selector {
     top: 10px;
@@ -197,6 +234,7 @@ button {
   .shape-button,
   .rotation-button,
   .position-button,
+  .place-button,
   .position-value {
     height: 40px;
   }

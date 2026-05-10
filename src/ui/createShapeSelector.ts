@@ -12,11 +12,13 @@ type CreateShapeSelectorParams = {
   onRotate: (axis: RotationAxis) => void
   onResetRotation: () => void
   onMovePosition: (axis: GridAxis, amount: number) => GridPos
+  onPlaceShape: () => boolean
 }
 
 type ShapeSelector = {
   element: HTMLElement
   setPosition: (pos: GridPos) => void
+  setPlacedCount: (count: number) => void
 }
 
 export function createShapeSelector({
@@ -27,6 +29,7 @@ export function createShapeSelector({
   onRotate,
   onResetRotation,
   onMovePosition,
+  onPlaceShape,
 }: CreateShapeSelectorParams): ShapeSelector {
   const panel = document.createElement("section")
   panel.className = "shape-selector"
@@ -143,7 +146,26 @@ export function createShapeSelector({
     positionControls.appendChild(row)
   }
 
+  const actionControls = document.createElement("div")
+  actionControls.className = "action-controls"
+  panel.appendChild(actionControls)
+
+  const placeButton = document.createElement("button")
+  placeButton.type = "button"
+  placeButton.className = "place-button"
+  placeButton.textContent = "Place"
+  placeButton.setAttribute("aria-label", "Place current shape")
+  placeButton.addEventListener("click", () => {
+    placeButton.classList.toggle("is-rejected", !onPlaceShape())
+  })
+  actionControls.appendChild(placeButton)
+
+  const placedCount = document.createElement("span")
+  placedCount.className = "placed-count"
+  actionControls.appendChild(placedCount)
+
   setPosition(initialPosition)
+  setPlacedCount(0)
 
   function setPosition(pos: GridPos) {
     for (const axis of ["x", "y", "z"] satisfies GridAxis[]) {
@@ -154,5 +176,10 @@ export function createShapeSelector({
   return {
     element: panel,
     setPosition,
+    setPlacedCount,
+  }
+
+  function setPlacedCount(count: number) {
+    placedCount.textContent = `Placed ${count}`
   }
 }
