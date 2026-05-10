@@ -19,6 +19,7 @@ type CreateGridPointerControllerParams = {
   scene: THREE.Scene
   onHoverHits: (hits: GridPointerHit[], event?: PointerEvent) => void
   onTapHits?: (hits: GridPointerHit[], event: PointerEvent) => void
+  onDragEndHits?: (hits: GridPointerHit[], event: PointerEvent) => void
   shouldHandleTap?: (event: PointerEvent) => boolean
 }
 
@@ -29,6 +30,7 @@ export function createGridPointerController({
   scene,
   onHoverHits,
   onTapHits,
+  onDragEndHits,
   shouldHandleTap,
 }: CreateGridPointerControllerParams): () => void {
   const raycaster = new THREE.Raycaster()
@@ -102,8 +104,20 @@ export function createGridPointerController({
   }
 
   function endPointer(event: PointerEvent) {
-    if (!pointerDownPos || getPointerDistance(pointerDownPos, event) > 14) {
+    if (!pointerDownPos) {
+      return
+    }
+
+    const distance = getPointerDistance(pointerDownPos, event)
+
+    if (distance > 14) {
       pointerDownPos = null
+      const hits = getPointerHits(event)
+
+      if (hits.length > 0) {
+        onDragEndHits?.(hits, event)
+      }
+
       return
     }
 
