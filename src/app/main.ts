@@ -8,6 +8,11 @@ import { createShapeMeshGroup } from "../render/shape/createShapeMeshGroup"
 import { gridToWorld } from "../render/scene/gridToWorld"
 import { DEFAULT_GRID_BOUNDS } from "../core/grid/GridBounds"
 import { createShapeSelector } from "../ui/createShapeSelector"
+import {
+  rotateShapeCells,
+  type RotationAxis,
+  type ShapeRotation,
+} from "../core/shape/rotateShapeCells"
 
 const mainScene = createMainScene()
 
@@ -18,19 +23,24 @@ if (!app) {
 }
 
 let activeShapeGroup: THREE.Group | null = null
+let selectedShapeId = ""
+let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
 
-function renderSelectedShape(shapeId: string) {
-  const shape = shapeDefinitions.find((definition) => definition.id === shapeId)
+function renderSelectedShape() {
+  const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
 
   if (!shape) {
-    throw new Error(`Shape not found: ${shapeId}`)
+    throw new Error(`Shape not found: ${selectedShapeId}`)
   }
 
   if (activeShapeGroup) {
     mainScene.scene.remove(activeShapeGroup)
   }
 
-  activeShapeGroup = createShapeMeshGroup(shape)
+  activeShapeGroup = createShapeMeshGroup({
+    ...shape,
+    cells: rotateShapeCells(shape.cells, selectedRotation),
+  })
 
   const worldPos = gridToWorld(
     { x: 0, y: 0, z: 0 },
@@ -41,16 +51,40 @@ function renderSelectedShape(shapeId: string) {
   mainScene.scene.add(activeShapeGroup)
 }
 
+function selectShape(shapeId: string) {
+  selectedShapeId = shapeId
+  selectedRotation = { x: 0, y: 0, z: 0 }
+  renderSelectedShape()
+}
+
+function rotateSelectedShape(axis: RotationAxis) {
+  selectedRotation = {
+    ...selectedRotation,
+    [axis]: selectedRotation[axis] + 1,
+  }
+
+  renderSelectedShape()
+}
+
+function resetSelectedRotation() {
+  selectedRotation = { x: 0, y: 0, z: 0 }
+  renderSelectedShape()
+}
+
 const initialShape = shapeDefinitions[0]
 
 if (!initialShape) {
   throw new Error("No shape definitions found")
 }
 
+selectedShapeId = initialShape.id
+
 app.appendChild(createShapeSelector({
   shapes: shapeDefinitions,
   selectedShapeId: initialShape.id,
-  onSelect: renderSelectedShape,
+  onSelect: selectShape,
+  onRotate: rotateSelectedShape,
+  onResetRotation: resetSelectedRotation,
 }))
 
-renderSelectedShape(initialShape.id)
+renderSelectedShape()

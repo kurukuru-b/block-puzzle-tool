@@ -63,10 +63,10 @@ button {
   gap: 8px;
 }
 
-.shape-button {
+.shape-button,
+.rotation-button {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
   min-width: 0;
   height: 40px;
   padding: 0 10px;
@@ -81,12 +81,24 @@ button {
     box-shadow 140ms ease;
 }
 
-.shape-button:hover {
+.shape-button {
+  justify-content: flex-start;
+}
+
+.rotation-button {
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.shape-button:hover,
+.rotation-button:hover {
   border-color: rgba(50, 61, 76, 0.5);
   background: #ffffff;
 }
 
-.shape-button:focus-visible {
+.shape-button:focus-visible,
+.rotation-button:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
@@ -116,6 +128,19 @@ button {
   border-radius: 3px;
 }
 
+.rotation-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(105, 114, 130, 0.24);
+}
+
+.rotation-button-wide {
+  font-weight: 650;
+}
+
 @media (max-width: 560px) {
   .shape-selector {
     top: 10px;
@@ -132,5 +157,9 @@ button {
   .shape-button {
     height: 36px;
     padding: 0 8px;
+  }
+
+  .rotation-button {
+    height: 36px;
   }
 }

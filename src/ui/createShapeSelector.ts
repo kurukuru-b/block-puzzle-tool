@@ -1,15 +1,20 @@
 import type { ShapeDefinition } from "../core/shape/ShapeDefinition"
+import type { RotationAxis } from "../core/shape/rotateShapeCells"
 
 type CreateShapeSelectorParams = {
   shapes: ShapeDefinition[]
   selectedShapeId: string
   onSelect: (shapeId: string) => void
+  onRotate: (axis: RotationAxis) => void
+  onResetRotation: () => void
 }
 
 export function createShapeSelector({
   shapes,
   selectedShapeId,
   onSelect,
+  onRotate,
+  onResetRotation,
 }: CreateShapeSelectorParams): HTMLElement {
   const panel = document.createElement("section")
   panel.className = "shape-selector"
@@ -57,6 +62,28 @@ export function createShapeSelector({
 
     shapeList.appendChild(button)
   }
+
+  const rotationControls = document.createElement("div")
+  rotationControls.className = "rotation-controls"
+  panel.appendChild(rotationControls)
+
+  for (const axis of ["x", "y", "z"] satisfies RotationAxis[]) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "rotation-button"
+    button.textContent = axis.toUpperCase()
+    button.setAttribute("aria-label", `Rotate shape around ${axis.toUpperCase()} axis`)
+    button.addEventListener("click", () => onRotate(axis))
+    rotationControls.appendChild(button)
+  }
+
+  const resetButton = document.createElement("button")
+  resetButton.type = "button"
+  resetButton.className = "rotation-button rotation-button-wide"
+  resetButton.textContent = "Reset"
+  resetButton.setAttribute("aria-label", "Reset shape rotation")
+  resetButton.addEventListener("click", onResetRotation)
+  rotationControls.appendChild(resetButton)
 
   return panel
 }
