@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { DEFAULT_GRID_BOUNDS } from "../../core/grid/GridBounds"
+import { createFloorMarker } from "../mesh/createFloorMarker"
 import { createGridCellMeshes } from "../mesh/createGridCellMeshes"
 
 export function createMainScene() {
@@ -31,6 +32,8 @@ export function createMainScene() {
     controls.enablePan = false
     controls.minDistance = 2.2
     controls.maxDistance = 12
+
+    scene.add(createFloorMarker(DEFAULT_GRID_BOUNDS))
 
     const gridCells = createGridCellMeshes(DEFAULT_GRID_BOUNDS)
     

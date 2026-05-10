@@ -18,9 +18,11 @@ import {
 } from "../core/shape/rotateShapeCells"
 import { createGridPointerController } from "../input/createGridPointerController"
 import {
+  findSupportedPlacementOrigin,
   getPlacedCellPositions,
   hasOverlappingCells,
   isShapeInsideGrid,
+  isShapeSupported,
 } from "../core/puzzle/shapePlacement"
 import { gridPosKey, type GridPos } from "../core/grid/GridPos"
 import type { PlacedShape } from "../core/puzzle/PlacedShape"
@@ -72,7 +74,7 @@ function renderSelectedShape() {
     previewOrigin,
     rotatedCells,
     occupiedCells,
-  )
+  ) && isShapeSupported(previewOrigin, rotatedCells, occupiedCells)
 
   activeShapeGroup = createShapeMeshGroup({
     ...shape,
@@ -129,7 +131,7 @@ function placeSelectedShape(): boolean {
     previewOrigin,
     rotatedCells,
     occupiedCells,
-  )
+  ) && isShapeSupported(previewOrigin, rotatedCells, occupiedCells)
 
   if (!isValidPlacement) {
     renderSelectedShape()
@@ -172,7 +174,18 @@ function placeSelectedShape(): boolean {
 }
 
 function placeSelectedShapeAt(pos: GridPos): boolean {
-  previewOrigin = pos
+  const supportedOrigin = getSupportedPreviewOrigin(pos)
+
+  if (!supportedOrigin) {
+    previewOrigin = {
+      x: pos.x,
+      y: 0,
+      z: pos.z,
+    }
+  } else {
+    previewOrigin = supportedOrigin
+  }
+
   updatePositionControls?.(previewOrigin)
   renderSelectedShape()
 
@@ -222,7 +235,11 @@ function previewSelectedShapeAt(pos: GridPos | null) {
     return
   }
 
-  previewOrigin = pos
+  previewOrigin = getSupportedPreviewOrigin(pos) ?? {
+    x: pos.x,
+    y: 0,
+    z: pos.z,
+  }
   updatePositionControls?.(previewOrigin)
   renderSelectedShape()
 }
@@ -309,6 +326,21 @@ function selectNextAvailableShape() {
   selectedShapeId = nextShape.id
   selectedRotation = { x: 0, y: 0, z: 0 }
   updateSelectedShapeControl?.(selectedShapeId)
+}
+
+function getSupportedPreviewOrigin(target: GridPos): GridPos | null {
+  const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
+
+  if (!shape || !canUseSelectedShape()) {
+    return null
+  }
+
+  return findSupportedPlacementOrigin(
+    target,
+    rotateShapeCells(shape.cells, selectedRotation),
+    DEFAULT_GRID_BOUNDS,
+    occupiedCells,
+  )
 }
 
 function axisToSizeKey(axis: "x" | "y" | "z"): "width" | "height" | "depth" {

@@ -33,3 +33,43 @@ export function hasOverlappingCells(
     occupiedCells.has(gridPosKey(pos))
   ))
 }
+
+export function isShapeSupported(
+  origin: GridPos,
+  cells: LocalCellPos[],
+  occupiedCells: Set<string>,
+): boolean {
+  return getPlacedCellPositions(origin, cells).some((pos) => (
+    pos.y === 0 ||
+    occupiedCells.has(gridPosKey({
+      x: pos.x,
+      y: pos.y - 1,
+      z: pos.z,
+    }))
+  ))
+}
+
+export function findSupportedPlacementOrigin(
+  target: GridPos,
+  cells: LocalCellPos[],
+  bounds: GridBounds,
+  occupiedCells: Set<string>,
+): GridPos | null {
+  for (let y = 0; y < bounds.height; y += 1) {
+    const origin = {
+      x: target.x,
+      y,
+      z: target.z,
+    }
+
+    if (
+      isShapeInsideGrid(origin, cells, bounds) &&
+      !hasOverlappingCells(origin, cells, occupiedCells) &&
+      isShapeSupported(origin, cells, occupiedCells)
+    ) {
+      return origin
+    }
+  }
+
+  return null
+}
