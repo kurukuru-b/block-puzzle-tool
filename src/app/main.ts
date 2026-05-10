@@ -47,7 +47,6 @@ let selectedShapeId = ""
 let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
 let previewOrigin: GridPos = { x: 0, y: 0, z: 0 }
 let isPreviewVisible = true
-let isDragPlacementMode = false
 let updatePositionControls: ((pos: GridPos) => void) | null = null
 let updatePlacedShapes: ((shapes: PlacedShapeSummary[]) => void) | null = null
 let updateSelectedPlacedShape: ((id: string | null) => void) | null = null
@@ -195,13 +194,6 @@ function placeSelectedShapeAt(pos: GridPos): boolean {
   return placeSelectedShape()
 }
 
-function toggleDragPlacementMode(): boolean {
-  isDragPlacementMode = !isDragPlacementMode
-  mainScene.controls.enabled = !isDragPlacementMode
-
-  return isDragPlacementMode
-}
-
 function deleteSelectedPlacedShape() {
   if (!selectedPlacedShapeId) {
     return
@@ -344,68 +336,31 @@ function selectNextAvailableShape() {
 }
 
 function getFirstPreviewOrigin(hits: GridPointerHit[]): GridPos | null {
-  let fallbackOrigin: GridPos | null = null
-
   for (const hit of hits) {
-    const origins = getPreviewOrigins(hit)
-
-    fallbackOrigin ??= origins[0] ?? null
-
-    const origin = origins.find((candidate) => (
-      isPreviewOriginPlaceable(candidate)
-    ))
+    const origin = getPreviewOrigin(hit)
 
     if (origin) {
       return origin
     }
   }
 
-  return fallbackOrigin
+  return null
 }
 
-function getPreviewOrigins(hit: GridPointerHit): GridPos[] {
+function getPreviewOrigin(hit: GridPointerHit): GridPos | null {
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
 
   if (!shape || !canUseSelectedShape()) {
-    return []
+    return null
   }
 
-  const targetCell = {
+  const origin = {
     x: hit.gridPos.x + hit.normal.x,
     y: isFloorColumnHit(hit) ? 0 : hit.gridPos.y + hit.normal.y,
     z: hit.gridPos.z + hit.normal.z,
   }
 
-  return getAnchorCells(rotateShapeCells(shape.cells, selectedRotation)).map((cell) => ({
-    x: targetCell.x - cell.x,
-    y: targetCell.y - cell.y,
-    z: targetCell.z - cell.z,
-  }))
-}
-
-function getAnchorCells(cells: GridPos[]): GridPos[] {
-  return [...cells].sort((a, b) => {
-    const aIsCore = isSameCell(a, { x: 0, y: 0, z: 0 })
-    const bIsCore = isSameCell(b, { x: 0, y: 0, z: 0 })
-
-    if (aIsCore !== bIsCore) {
-      return aIsCore ? -1 : 1
-    }
-
-    if (a.y !== b.y) {
-      return a.y - b.y
-    }
-
-    if (a.z !== b.z) {
-      return a.z - b.z
-    }
-
-    return a.x - b.x
-  })
-}
-
-function isSameCell(a: GridPos, b: GridPos): boolean {
-  return a.x === b.x && a.y === b.y && a.z === b.z
+  return origin
 }
 
 function isFloorColumnHit(hit: GridPointerHit): boolean {
@@ -467,7 +422,6 @@ const shapeSelector = createShapeSelector({
   onPlaceShape: placeSelectedShape,
   onDeletePlacedShape: deleteSelectedPlacedShape,
   onEditPlacedShape: editSelectedPlacedShape,
-  onToggleDragMode: toggleDragPlacementMode,
 })
 
 updatePositionControls = shapeSelector.setPosition
@@ -484,20 +438,6 @@ createGridPointerController({
   scene: mainScene.scene,
   onHoverHits: previewSelectedShapeAt,
   onTapHits: (hits, event) => {
-    const candidateOrigin = getFirstPreviewOrigin([
-      ...getPlacedShapePointerHits(event),
-      ...hits,
-    ])
-
-    if (candidateOrigin) {
-      placeSelectedShapeAt(candidateOrigin)
-    }
-  },
-  onDragEndHits: (hits, event) => {
-    if (!isDragPlacementMode) {
-      return
-    }
-
     const candidateOrigin = getFirstPreviewOrigin([
       ...getPlacedShapePointerHits(event),
       ...hits,

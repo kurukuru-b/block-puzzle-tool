@@ -20,7 +20,6 @@ type CreateShapeSelectorParams = {
   onPlaceShape: () => boolean
   onDeletePlacedShape: () => void
   onEditPlacedShape: () => void
-  onToggleDragMode: () => boolean
 }
 
 type ShapeSelector = {
@@ -30,7 +29,6 @@ type ShapeSelector = {
   setPlacedShapes: (shapes: PlacedShapeSummary[]) => void
   setSelectedPlacedShape: (id: string | null) => void
   setShapeAvailability: (shapeId: string, isAvailable: boolean) => void
-  setDragMode: (isEnabled: boolean) => void
 }
 
 export function createShapeSelector({
@@ -44,7 +42,6 @@ export function createShapeSelector({
   onPlaceShape,
   onDeletePlacedShape,
   onEditPlacedShape,
-  onToggleDragMode,
 }: CreateShapeSelectorParams): ShapeSelector {
   const panel = document.createElement("section")
   panel.className = "shape-selector"
@@ -177,16 +174,6 @@ export function createShapeSelector({
   placedCount.className = "placed-count"
   actionControls.appendChild(placedCount)
 
-  const dragButton = document.createElement("button")
-  dragButton.type = "button"
-  dragButton.className = "secondary-action-button drag-mode-button"
-  dragButton.textContent = "Drag"
-  dragButton.setAttribute("aria-pressed", "false")
-  dragButton.addEventListener("click", () => {
-    setDragMode(onToggleDragMode())
-  })
-  actionControls.appendChild(dragButton)
-
   const selectedControls = document.createElement("div")
   selectedControls.className = "selected-controls"
   panel.appendChild(selectedControls)
@@ -230,7 +217,6 @@ export function createShapeSelector({
     setPlacedShapes,
     setSelectedPlacedShape,
     setShapeAvailability,
-    setDragMode,
   }
 
   function setSelectedShape(shapeId: string) {
@@ -280,10 +266,5 @@ export function createShapeSelector({
 
     button.disabled = !isAvailable
     button.classList.toggle("is-unavailable", !isAvailable)
-  }
-
-  function setDragMode(isEnabled: boolean) {
-    dragButton.classList.toggle("is-active", isEnabled)
-    dragButton.setAttribute("aria-pressed", String(isEnabled))
   }
 }
