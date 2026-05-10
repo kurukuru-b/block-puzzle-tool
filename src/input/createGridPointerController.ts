@@ -34,6 +34,11 @@ export function createGridPointerController({
   const raycaster = new THREE.Raycaster()
   const pointer = new THREE.Vector2()
   const hitboxes = createGridCellHitboxes(bounds)
+  const floorPlane = new THREE.Plane(
+    new THREE.Vector3(0, 1, 0),
+    (bounds.height - 1) / 2 + 0.5,
+  )
+  const floorPoint = new THREE.Vector3()
   let pointerDownPos: { x: number, y: number } | null = null
 
   scene.add(hitboxes)
@@ -45,22 +50,44 @@ export function createGridPointerController({
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
 
     raycaster.setFromCamera(pointer, camera)
+    const floorHit = getFloorHit()
 
     const intersections = raycaster.intersectObjects<GridCellHitbox>(
       hitboxes.children as GridCellHitbox[],
       false,
     )
 
-    return intersections.flatMap((intersection) => {
-      return [{
-        gridPos: intersection.object.userData.gridPos,
-        normal: {
-          x: 0,
-          y: 0,
-          z: 0,
-        },
-      }]
-    })
+    return [
+      ...(floorHit ? [floorHit] : []),
+      ...intersections.flatMap((intersection) => {
+        return [{
+          gridPos: intersection.object.userData.gridPos,
+          normal: {
+            x: 0,
+            y: 0,
+            z: 0,
+          },
+        }]
+      }),
+    ]
+  }
+
+  function getFloorHit(): GridPointerHit | null {
+    if (!raycaster.ray.intersectPlane(floorPlane, floorPoint)) {
+      return null
+    }
+
+    const x = Math.round(floorPoint.x + (bounds.width - 1) / 2)
+    const z = Math.round(floorPoint.z + (bounds.depth - 1) / 2)
+
+    if (x < 0 || x >= bounds.width || z < 0 || z >= bounds.depth) {
+      return null
+    }
+
+    return {
+      gridPos: { x, y: 0, z },
+      normal: { x: 0, y: 0, z: 0 },
+    }
   }
 
   function updatePointer(event: PointerEvent) {

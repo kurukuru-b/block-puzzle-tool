@@ -233,19 +233,19 @@ function editSelectedPlacedShape() {
 }
 
 function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {
-  const supportedOrigin = getFirstSupportedPreviewOrigin([
+  const candidateOrigin = getFirstPreviewOrigin([
     ...getPlacedShapePointerHits(event),
     ...hits,
   ])
 
-  if (!supportedOrigin) {
+  if (!candidateOrigin) {
     isPreviewVisible = false
     renderSelectedShape()
     return
   }
 
   isPreviewVisible = true
-  previewOrigin = supportedOrigin
+  previewOrigin = candidateOrigin
   updatePositionControls?.(previewOrigin)
   renderSelectedShape()
 }
@@ -335,19 +335,19 @@ function selectNextAvailableShape() {
   updateSelectedShapeControl?.(selectedShapeId)
 }
 
-function getFirstSupportedPreviewOrigin(hits: GridPointerHit[]): GridPos | null {
+function getFirstPreviewOrigin(hits: GridPointerHit[]): GridPos | null {
   for (const hit of hits) {
-    const supportedOrigin = getSupportedPreviewOrigin(hit)
+    const origin = getPreviewOrigin(hit)
 
-    if (supportedOrigin) {
-      return supportedOrigin
+    if (origin) {
+      return origin
     }
   }
 
   return null
 }
 
-function getSupportedPreviewOrigin(hit: GridPointerHit): GridPos | null {
+function getPreviewOrigin(hit: GridPointerHit): GridPos | null {
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
 
   if (!shape || !canUseSelectedShape()) {
@@ -359,21 +359,32 @@ function getSupportedPreviewOrigin(hit: GridPointerHit): GridPos | null {
     y: isFloorColumnHit(hit) ? 0 : hit.gridPos.y + hit.normal.y,
     z: hit.gridPos.z + hit.normal.z,
   }
-  const rotatedCells = rotateShapeCells(shape.cells, selectedRotation)
 
-  if (
-    isShapeInsideGrid(origin, rotatedCells, DEFAULT_GRID_BOUNDS) &&
-    !hasOverlappingCells(origin, rotatedCells, occupiedCells) &&
-    isShapeSupported(origin, rotatedCells, occupiedCells)
-  ) {
-    return origin
-  }
-
-  return null
+  return origin
 }
 
 function isFloorColumnHit(hit: GridPointerHit): boolean {
   return hit.normal.x === 0 && hit.normal.y === 0 && hit.normal.z === 0
+}
+
+function isPreviewOriginPlaceable(origin: GridPos): boolean {
+  const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
+
+  if (!shape) {
+    return false
+  }
+
+  const rotatedCells = rotateShapeCells(shape.cells, selectedRotation)
+
+  return isShapeInsideGrid(
+    origin,
+    rotatedCells,
+    DEFAULT_GRID_BOUNDS,
+  ) && canUseSelectedShape() && !hasOverlappingCells(
+    origin,
+    rotatedCells,
+    occupiedCells,
+  ) && isShapeSupported(origin, rotatedCells, occupiedCells)
 }
 
 function axisToSizeKey(axis: "x" | "y" | "z"): "width" | "height" | "depth" {
@@ -427,13 +438,13 @@ createGridPointerController({
   scene: mainScene.scene,
   onHoverHits: previewSelectedShapeAt,
   onTapHits: (hits, event) => {
-    const supportedOrigin = getFirstSupportedPreviewOrigin([
+    const candidateOrigin = getFirstPreviewOrigin([
       ...getPlacedShapePointerHits(event),
       ...hits,
     ])
 
-    if (supportedOrigin) {
-      placeSelectedShapeAt(supportedOrigin)
+    if (candidateOrigin) {
+      placeSelectedShapeAt(candidateOrigin)
     }
   },
 })
@@ -461,7 +472,9 @@ function createPlacedShapeSelectionController() {
 
     pointerDownPos = null
 
-    if (getFirstSupportedPreviewOrigin(getPlacedShapePointerHits(event))) {
+    const placedSurfaceOrigin = getFirstPreviewOrigin(getPlacedShapePointerHits(event))
+
+    if (placedSurfaceOrigin && isPreviewOriginPlaceable(placedSurfaceOrigin)) {
       return
     }
 
