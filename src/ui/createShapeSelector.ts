@@ -1,21 +1,33 @@
 import type { ShapeDefinition } from "../core/shape/ShapeDefinition"
 import type { RotationAxis } from "../core/shape/rotateShapeCells"
+import type { GridPos } from "../core/grid/GridPos"
+
+type GridAxis = "x" | "y" | "z"
 
 type CreateShapeSelectorParams = {
   shapes: ShapeDefinition[]
   selectedShapeId: string
+  initialPosition: GridPos
   onSelect: (shapeId: string) => void
   onRotate: (axis: RotationAxis) => void
   onResetRotation: () => void
+  onMovePosition: (axis: GridAxis, amount: number) => GridPos
+}
+
+type ShapeSelector = {
+  element: HTMLElement
+  setPosition: (pos: GridPos) => void
 }
 
 export function createShapeSelector({
   shapes,
   selectedShapeId,
+  initialPosition,
   onSelect,
   onRotate,
   onResetRotation,
-}: CreateShapeSelectorParams): HTMLElement {
+  onMovePosition,
+}: CreateShapeSelectorParams): ShapeSelector {
   const panel = document.createElement("section")
   panel.className = "shape-selector"
 
@@ -85,5 +97,62 @@ export function createShapeSelector({
   resetButton.addEventListener("click", onResetRotation)
   rotationControls.appendChild(resetButton)
 
-  return panel
+  const positionControls = document.createElement("div")
+  positionControls.className = "position-controls"
+  panel.appendChild(positionControls)
+
+  const positionValues = new Map<GridAxis, HTMLElement>()
+
+  for (const axis of ["x", "y", "z"] satisfies GridAxis[]) {
+    const row = document.createElement("div")
+    row.className = "position-row"
+
+    const label = document.createElement("span")
+    label.className = "position-axis"
+    label.textContent = axis.toUpperCase()
+    row.appendChild(label)
+
+    const decreaseButton = document.createElement("button")
+    decreaseButton.type = "button"
+    decreaseButton.className = "position-button"
+    decreaseButton.textContent = "-"
+    decreaseButton.setAttribute("aria-label", `Move ${axis.toUpperCase()} down`)
+    row.appendChild(decreaseButton)
+
+    const value = document.createElement("span")
+    value.className = "position-value"
+    value.textContent = String(initialPosition[axis])
+    row.appendChild(value)
+    positionValues.set(axis, value)
+
+    const increaseButton = document.createElement("button")
+    increaseButton.type = "button"
+    increaseButton.className = "position-button"
+    increaseButton.textContent = "+"
+    increaseButton.setAttribute("aria-label", `Move ${axis.toUpperCase()} up`)
+    row.appendChild(increaseButton)
+
+    decreaseButton.addEventListener("click", () => {
+      setPosition(onMovePosition(axis, -1))
+    })
+
+    increaseButton.addEventListener("click", () => {
+      setPosition(onMovePosition(axis, 1))
+    })
+
+    positionControls.appendChild(row)
+  }
+
+  setPosition(initialPosition)
+
+  function setPosition(pos: GridPos) {
+    for (const axis of ["x", "y", "z"] satisfies GridAxis[]) {
+      positionValues.get(axis)!.textContent = String(pos[axis])
+    }
+  }
+
+  return {
+    element: panel,
+    setPosition,
+  }
 }

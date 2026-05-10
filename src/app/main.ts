@@ -28,7 +28,8 @@ if (!app) {
 let activeShapeGroup: THREE.Group | null = null
 let selectedShapeId = ""
 let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
-let hoverGridPos: GridPos | null = null
+let previewOrigin: GridPos = { x: 0, y: 0, z: 0 }
+let updatePositionControls: ((pos: GridPos) => void) | null = null
 
 function renderSelectedShape() {
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
@@ -42,10 +43,8 @@ function renderSelectedShape() {
   }
 
   const rotatedCells = rotateShapeCells(shape.cells, selectedRotation)
-  const origin = hoverGridPos ?? { x: 0, y: 0, z: 0 }
-  const isPreview = hoverGridPos !== null
   const isValidPlacement = isShapeInsideGrid(
-    origin,
+    previewOrigin,
     rotatedCells,
     DEFAULT_GRID_BOUNDS,
   )
@@ -55,11 +54,11 @@ function renderSelectedShape() {
     cells: rotatedCells,
   }, {
     color: isValidPlacement ? shape.color : 0xff3344,
-    opacity: isPreview ? 0.58 : 1,
+    opacity: 0.58,
   })
 
   const worldPos = gridToWorld(
-    origin,
+    previewOrigin,
     DEFAULT_GRID_BOUNDS,
   )
 
@@ -88,8 +87,41 @@ function resetSelectedRotation() {
 }
 
 function previewSelectedShapeAt(pos: GridPos | null) {
-  hoverGridPos = pos
+  if (!pos) {
+    return
+  }
+
+  previewOrigin = pos
+  updatePositionControls?.(previewOrigin)
   renderSelectedShape()
+}
+
+function movePreviewOrigin(axis: "x" | "y" | "z", amount: number): GridPos {
+  previewOrigin = {
+    ...previewOrigin,
+    [axis]: clamp(previewOrigin[axis] + amount, 0, DEFAULT_GRID_BOUNDS[axisToSizeKey(axis)] - 1),
+  }
+
+  renderSelectedShape()
+  updatePositionControls?.(previewOrigin)
+
+  return previewOrigin
+}
+
+function axisToSizeKey(axis: "x" | "y" | "z"): "width" | "height" | "depth" {
+  if (axis === "x") {
+    return "width"
+  }
+
+  if (axis === "y") {
+    return "height"
+  }
+
+  return "depth"
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
 }
 
 const initialShape = shapeDefinitions[0]
@@ -100,13 +132,18 @@ if (!initialShape) {
 
 selectedShapeId = initialShape.id
 
-app.appendChild(createShapeSelector({
+const shapeSelector = createShapeSelector({
   shapes: shapeDefinitions,
   selectedShapeId: initialShape.id,
+  initialPosition: previewOrigin,
   onSelect: selectShape,
   onRotate: rotateSelectedShape,
   onResetRotation: resetSelectedRotation,
-}))
+  onMovePosition: movePreviewOrigin,
+})
+
+updatePositionControls = shapeSelector.setPosition
+app.appendChild(shapeSelector.element)
 
 createGridPointerController({
   bounds: DEFAULT_GRID_BOUNDS,

@@ -23,6 +23,7 @@ body {
 
 canvas {
   display: block;
+  touch-action: none;
 }
 
 button {
@@ -64,7 +65,8 @@ button {
 }
 
 .shape-button,
-.rotation-button {
+.rotation-button,
+.position-button {
   display: flex;
   align-items: center;
   min-width: 0;
@@ -85,20 +87,23 @@ button {
   justify-content: flex-start;
 }
 
-.rotation-button {
+.rotation-button,
+.position-button {
   justify-content: center;
   font-size: 13px;
   font-weight: 750;
 }
 
 .shape-button:hover,
-.rotation-button:hover {
+.rotation-button:hover,
+.position-button:hover {
   border-color: rgba(50, 61, 76, 0.5);
   background: #ffffff;
 }
 
 .shape-button:focus-visible,
-.rotation-button:focus-visible {
+.rotation-button:focus-visible,
+.position-button:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
@@ -141,6 +146,41 @@ button {
   font-weight: 650;
 }
 
+.position-controls {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(105, 114, 130, 0.24);
+}
+
+.position-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 44px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.position-axis {
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.position-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border: 1px solid rgba(105, 114, 130, 0.24);
+  border-radius: 6px;
+  color: #141820;
+  background: rgba(255, 255, 255, 0.54);
+  font-size: 14px;
+  font-weight: 800;
+}
+
 @media (max-width: 560px) {
   .shape-selector {
     top: 10px;
@@ -154,12 +194,19 @@ button {
     gap: 6px;
   }
 
+  .shape-button,
+  .rotation-button,
+  .position-button,
+  .position-value {
+    height: 40px;
+  }
+
   .shape-button {
-    height: 36px;
     padding: 0 8px;
   }
 
-  .rotation-button {
-    height: 36px;
+  .position-row {
+    grid-template-columns: 24px 1fr 40px 1fr;
+    gap: 6px;
   }
 }
