@@ -1,35 +1,56 @@
+import "../style.css"
+
+import * as THREE from "three"
+
 import { createMainScene } from "../render/scene/createMainScene"
-import type { PuzzleState } from "../core/puzzle/PuzzleState"
 import { shapeDefinitions } from "../core/shape/shapeDefinitions"
 import { createShapeMeshGroup } from "../render/shape/createShapeMeshGroup"
 import { gridToWorld } from "../render/scene/gridToWorld"
 import { DEFAULT_GRID_BOUNDS } from "../core/grid/GridBounds"
+import { createShapeSelector } from "../ui/createShapeSelector"
 
 const mainScene = createMainScene()
 
-const puzzleState: PuzzleState = {
-  placedShapes: [
-    {
-      shapeId: "gray",
-      origin: { x: 0, y: 0, z: 0 },
-      rotation: { x: 0, y: 0, z: 0 },
-    },
-  ],
+const app = document.querySelector<HTMLDivElement>("#app")
+
+if (!app) {
+  throw new Error("App root not found")
 }
 
-for (const placedShape of puzzleState.placedShapes) {
-  const shape = shapeDefinitions.find((s) => s.id === placedShape.shapeId)
+let activeShapeGroup: THREE.Group | null = null
+
+function renderSelectedShape(shapeId: string) {
+  const shape = shapeDefinitions.find((definition) => definition.id === shapeId)
 
   if (!shape) {
-    throw new Error(`Shape not found: ${placedShape.shapeId}`)
+    throw new Error(`Shape not found: ${shapeId}`)
   }
 
-  const shapeGroup = createShapeMeshGroup(shape)
+  if (activeShapeGroup) {
+    mainScene.scene.remove(activeShapeGroup)
+  }
+
+  activeShapeGroup = createShapeMeshGroup(shape)
+
   const worldPos = gridToWorld(
-  placedShape.origin,
-  DEFAULT_GRID_BOUNDS
+    { x: 0, y: 0, z: 0 },
+    DEFAULT_GRID_BOUNDS,
   )
 
-  shapeGroup.position.set(worldPos.x, worldPos.y, worldPos.z)
-  mainScene.scene.add(shapeGroup)
+  activeShapeGroup.position.set(worldPos.x, worldPos.y, worldPos.z)
+  mainScene.scene.add(activeShapeGroup)
 }
+
+const initialShape = shapeDefinitions[0]
+
+if (!initialShape) {
+  throw new Error("No shape definitions found")
+}
+
+app.appendChild(createShapeSelector({
+  shapes: shapeDefinitions,
+  selectedShapeId: initialShape.id,
+  onSelect: renderSelectedShape,
+}))
+
+renderSelectedShape(initialShape.id)
