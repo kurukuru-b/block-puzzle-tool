@@ -6,6 +6,7 @@ export function createFloorMarker(bounds: GridBounds): THREE.Group {
   const group = new THREE.Group()
   const width = bounds.width
   const depth = bounds.depth
+  const floorY = -(bounds.height - 1) / 2 - 0.5
 
   const floorGeometry = new THREE.PlaneGeometry(width, depth)
   const floorMaterial = new THREE.MeshBasicMaterial({
@@ -18,7 +19,7 @@ export function createFloorMarker(bounds: GridBounds): THREE.Group {
   const floor = new THREE.Mesh(floorGeometry, floorMaterial)
 
   floor.rotation.x = Math.PI / 2
-  floor.position.y = -0.5
+  floor.position.y = floorY
   group.add(floor)
 
   const dotGeometry = new THREE.CircleGeometry(0.08, 16)
@@ -37,7 +38,7 @@ export function createFloorMarker(bounds: GridBounds): THREE.Group {
       dot.rotation.x = Math.PI / 2
       dot.position.set(
         x - (bounds.width - 1) / 2,
-        -0.495,
+        floorY + 0.005,
         z - (bounds.depth - 1) / 2,
       )
       group.add(dot)
