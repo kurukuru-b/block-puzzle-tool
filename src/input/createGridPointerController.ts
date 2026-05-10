@@ -57,9 +57,11 @@ export function createGridPointerController({
       false,
     )
 
-    return [
-      ...(floorHit ? [floorHit] : []),
-      ...intersections.flatMap((intersection) => {
+    if (floorHit) {
+      return [floorHit]
+    }
+
+    return intersections.flatMap((intersection) => {
         return [{
           gridPos: intersection.object.userData.gridPos,
           normal: {
@@ -68,8 +70,7 @@ export function createGridPointerController({
             z: 0,
           },
         }]
-      }),
-    ]
+      })
   }
 
   function getFloorHit(): GridPointerHit | null {
