@@ -4,6 +4,11 @@ import type { GridPos } from "../core/grid/GridPos"
 
 type GridAxis = "x" | "y" | "z"
 
+export type PlacedShapeSummary = {
+  id: string
+  shapeId: string
+}
+
 type CreateShapeSelectorParams = {
   shapes: ShapeDefinition[]
   selectedShapeId: string
@@ -13,12 +18,17 @@ type CreateShapeSelectorParams = {
   onResetRotation: () => void
   onMovePosition: (axis: GridAxis, amount: number) => GridPos
   onPlaceShape: () => boolean
+  onDeletePlacedShape: () => void
+  onEditPlacedShape: () => void
 }
 
 type ShapeSelector = {
   element: HTMLElement
   setPosition: (pos: GridPos) => void
-  setPlacedCount: (count: number) => void
+  setSelectedShape: (shapeId: string) => void
+  setPlacedShapes: (shapes: PlacedShapeSummary[]) => void
+  setSelectedPlacedShape: (id: string | null) => void
+  setShapeAvailability: (shapeId: string, isAvailable: boolean) => void
 }
 
 export function createShapeSelector({
@@ -30,6 +40,8 @@ export function createShapeSelector({
   onResetRotation,
   onMovePosition,
   onPlaceShape,
+  onDeletePlacedShape,
+  onEditPlacedShape,
 }: CreateShapeSelectorParams): ShapeSelector {
   const panel = document.createElement("section")
   panel.className = "shape-selector"
@@ -41,6 +53,7 @@ export function createShapeSelector({
   const shapeList = document.createElement("div")
   shapeList.className = "shape-list"
   panel.appendChild(shapeList)
+  const shapeButtons = new Map<string, HTMLButtonElement>()
 
   for (const shape of shapes) {
     const button = document.createElement("button")
@@ -68,14 +81,11 @@ export function createShapeSelector({
     button.addEventListener("click", () => {
       onSelect(shape.id)
 
-      for (const item of shapeList.querySelectorAll<HTMLButtonElement>(".shape-button")) {
-        const isSelected = item.dataset.shapeId === shape.id
-        item.classList.toggle("is-selected", isSelected)
-        item.setAttribute("aria-pressed", String(isSelected))
-      }
+      setSelectedShape(shape.id)
     })
 
     shapeList.appendChild(button)
+    shapeButtons.set(shape.id, button)
   }
 
   const rotationControls = document.createElement("div")
@@ -164,8 +174,35 @@ export function createShapeSelector({
   placedCount.className = "placed-count"
   actionControls.appendChild(placedCount)
 
+  const selectedControls = document.createElement("div")
+  selectedControls.className = "selected-controls"
+  panel.appendChild(selectedControls)
+
+  const selectedLabel = document.createElement("span")
+  selectedLabel.className = "selected-label"
+  selectedControls.appendChild(selectedLabel)
+
+  const editButton = document.createElement("button")
+  editButton.type = "button"
+  editButton.className = "secondary-action-button"
+  editButton.textContent = "Edit"
+  editButton.addEventListener("click", onEditPlacedShape)
+  selectedControls.appendChild(editButton)
+
+  const deleteButton = document.createElement("button")
+  deleteButton.type = "button"
+  deleteButton.className = "secondary-action-button danger-action-button"
+  deleteButton.textContent = "Delete"
+  deleteButton.addEventListener("click", onDeletePlacedShape)
+  selectedControls.appendChild(deleteButton)
+
+  const placedList = document.createElement("div")
+  placedList.className = "placed-list"
+  panel.appendChild(placedList)
+
   setPosition(initialPosition)
-  setPlacedCount(0)
+  setPlacedShapes([])
+  setSelectedPlacedShape(null)
 
   function setPosition(pos: GridPos) {
     for (const axis of ["x", "y", "z"] satisfies GridAxis[]) {
@@ -176,10 +213,58 @@ export function createShapeSelector({
   return {
     element: panel,
     setPosition,
-    setPlacedCount,
+    setSelectedShape,
+    setPlacedShapes,
+    setSelectedPlacedShape,
+    setShapeAvailability,
   }
 
-  function setPlacedCount(count: number) {
-    placedCount.textContent = `Placed ${count}`
+  function setSelectedShape(shapeId: string) {
+    for (const item of shapeList.querySelectorAll<HTMLButtonElement>(".shape-button")) {
+      const isSelected = item.dataset.shapeId === shapeId
+      item.classList.toggle("is-selected", isSelected)
+      item.setAttribute("aria-pressed", String(isSelected))
+    }
+  }
+
+  function setPlacedShapes(shapes: PlacedShapeSummary[]) {
+    placedCount.textContent = `Placed ${shapes.length}`
+    placedList.replaceChildren()
+
+    if (shapes.length === 0) {
+      const empty = document.createElement("span")
+      empty.className = "placed-empty"
+      empty.textContent = "No placed shapes"
+      placedList.appendChild(empty)
+      return
+    }
+
+    for (const shape of shapes) {
+      const item = document.createElement("span")
+      item.className = "placed-item"
+      item.dataset.placedShapeId = shape.id
+      item.textContent = shape.shapeId
+      placedList.appendChild(item)
+    }
+  }
+
+  function setSelectedPlacedShape(id: string | null) {
+    selectedControls.classList.toggle("is-visible", id !== null)
+    selectedLabel.textContent = id ? `Selected ${id}` : ""
+
+    for (const item of placedList.querySelectorAll<HTMLElement>(".placed-item")) {
+      item.classList.toggle("is-selected", item.dataset.placedShapeId === id)
+    }
+  }
+
+  function setShapeAvailability(shapeId: string, isAvailable: boolean) {
+    const button = shapeButtons.get(shapeId)
+
+    if (!button) {
+      return
+    }
+
+    button.disabled = !isAvailable
+    button.classList.toggle("is-unavailable", !isAvailable)
   }
 }
