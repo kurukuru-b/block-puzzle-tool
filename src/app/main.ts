@@ -13,6 +13,9 @@ import {
   type RotationAxis,
   type ShapeRotation,
 } from "../core/shape/rotateShapeCells"
+import { createGridPointerController } from "../input/createGridPointerController"
+import { isShapeInsideGrid } from "../core/puzzle/shapePlacement"
+import type { GridPos } from "../core/grid/GridPos"
 
 const mainScene = createMainScene()
 
@@ -25,6 +28,7 @@ if (!app) {
 let activeShapeGroup: THREE.Group | null = null
 let selectedShapeId = ""
 let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
+let hoverGridPos: GridPos | null = null
 
 function renderSelectedShape() {
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
@@ -37,13 +41,25 @@ function renderSelectedShape() {
     mainScene.scene.remove(activeShapeGroup)
   }
 
+  const rotatedCells = rotateShapeCells(shape.cells, selectedRotation)
+  const origin = hoverGridPos ?? { x: 0, y: 0, z: 0 }
+  const isPreview = hoverGridPos !== null
+  const isValidPlacement = isShapeInsideGrid(
+    origin,
+    rotatedCells,
+    DEFAULT_GRID_BOUNDS,
+  )
+
   activeShapeGroup = createShapeMeshGroup({
     ...shape,
-    cells: rotateShapeCells(shape.cells, selectedRotation),
+    cells: rotatedCells,
+  }, {
+    color: isValidPlacement ? shape.color : 0xff3344,
+    opacity: isPreview ? 0.58 : 1,
   })
 
   const worldPos = gridToWorld(
-    { x: 0, y: 0, z: 0 },
+    origin,
     DEFAULT_GRID_BOUNDS,
   )
 
@@ -71,6 +87,11 @@ function resetSelectedRotation() {
   renderSelectedShape()
 }
 
+function previewSelectedShapeAt(pos: GridPos | null) {
+  hoverGridPos = pos
+  renderSelectedShape()
+}
+
 const initialShape = shapeDefinitions[0]
 
 if (!initialShape) {
@@ -86,5 +107,13 @@ app.appendChild(createShapeSelector({
   onRotate: rotateSelectedShape,
   onResetRotation: resetSelectedRotation,
 }))
+
+createGridPointerController({
+  bounds: DEFAULT_GRID_BOUNDS,
+  camera: mainScene.camera,
+  domElement: mainScene.renderer.domElement,
+  scene: mainScene.scene,
+  onHoverCell: previewSelectedShapeAt,
+})
 
 renderSelectedShape()

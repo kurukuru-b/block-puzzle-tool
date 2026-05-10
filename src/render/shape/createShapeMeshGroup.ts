@@ -4,8 +4,14 @@ import type { ShapeDefinition } from "../../core/shape/ShapeDefinition"
 
 const CELL_SIZE = 1
 
+type CreateShapeMeshGroupOptions = {
+  color?: number
+  opacity?: number
+}
+
 export function createShapeMeshGroup(
   shape: ShapeDefinition,
+  options: CreateShapeMeshGroupOptions = {},
 ): THREE.Group {
   const group = new THREE.Group()
 
@@ -17,7 +23,9 @@ export function createShapeMeshGroup(
     )
 
     const material = new THREE.MeshStandardMaterial({
-      color: shape.color,
+      color: options.color ?? shape.color,
+      opacity: options.opacity ?? 1,
+      transparent: options.opacity !== undefined && options.opacity < 1,
     })
 
     const mesh = new THREE.Mesh(geometry, material)
