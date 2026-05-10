@@ -16,9 +16,11 @@ import {
   type RotationAxis,
   type ShapeRotation,
 } from "../core/shape/rotateShapeCells"
-import { createGridPointerController } from "../input/createGridPointerController"
 import {
-  findSupportedPlacementOrigin,
+  createGridPointerController,
+  type GridPointerHit,
+} from "../input/createGridPointerController"
+import {
   getPlacedCellPositions,
   hasOverlappingCells,
   isShapeInsideGrid,
@@ -230,8 +232,11 @@ function editSelectedPlacedShape() {
   renderSelectedShape()
 }
 
-function previewSelectedShapeAt(positions: GridPos[]) {
-  const supportedOrigin = getFirstSupportedPreviewOrigin(positions)
+function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {
+  const supportedOrigin = getFirstSupportedPreviewOrigin([
+    ...getPlacedShapePointerHits(event),
+    ...hits,
+  ])
 
   if (!supportedOrigin) {
     isPreviewVisible = false
@@ -330,9 +335,9 @@ function selectNextAvailableShape() {
   updateSelectedShapeControl?.(selectedShapeId)
 }
 
-function getFirstSupportedPreviewOrigin(targets: GridPos[]): GridPos | null {
-  for (const target of targets) {
-    const supportedOrigin = getSupportedPreviewOrigin(target)
+function getFirstSupportedPreviewOrigin(hits: GridPointerHit[]): GridPos | null {
+  for (const hit of hits) {
+    const supportedOrigin = getSupportedPreviewOrigin(hit)
 
     if (supportedOrigin) {
       return supportedOrigin
@@ -342,19 +347,33 @@ function getFirstSupportedPreviewOrigin(targets: GridPos[]): GridPos | null {
   return null
 }
 
-function getSupportedPreviewOrigin(target: GridPos): GridPos | null {
+function getSupportedPreviewOrigin(hit: GridPointerHit): GridPos | null {
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
 
   if (!shape || !canUseSelectedShape()) {
     return null
   }
 
-  return findSupportedPlacementOrigin(
-    target,
-    rotateShapeCells(shape.cells, selectedRotation),
-    DEFAULT_GRID_BOUNDS,
-    occupiedCells,
-  )
+  const origin = {
+    x: hit.gridPos.x + hit.normal.x,
+    y: isFloorColumnHit(hit) ? 0 : hit.gridPos.y + hit.normal.y,
+    z: hit.gridPos.z + hit.normal.z,
+  }
+  const rotatedCells = rotateShapeCells(shape.cells, selectedRotation)
+
+  if (
+    isShapeInsideGrid(origin, rotatedCells, DEFAULT_GRID_BOUNDS) &&
+    !hasOverlappingCells(origin, rotatedCells, occupiedCells) &&
+    isShapeSupported(origin, rotatedCells, occupiedCells)
+  ) {
+    return origin
+  }
+
+  return null
+}
+
+function isFloorColumnHit(hit: GridPointerHit): boolean {
+  return hit.normal.x === 0 && hit.normal.y === 0 && hit.normal.z === 0
 }
 
 function axisToSizeKey(axis: "x" | "y" | "z"): "width" | "height" | "depth" {
@@ -406,15 +425,17 @@ createGridPointerController({
   camera: mainScene.camera,
   domElement: mainScene.renderer.domElement,
   scene: mainScene.scene,
-  onHoverCells: previewSelectedShapeAt,
-  onTapCells: (positions) => {
-    const supportedOrigin = getFirstSupportedPreviewOrigin(positions)
+  onHoverHits: previewSelectedShapeAt,
+  onTapHits: (hits, event) => {
+    const supportedOrigin = getFirstSupportedPreviewOrigin([
+      ...getPlacedShapePointerHits(event),
+      ...hits,
+    ])
 
     if (supportedOrigin) {
       placeSelectedShapeAt(supportedOrigin)
     }
   },
-  shouldHandleTap: (event) => getPlacedShapeIdAtPointer(event) === null,
 })
 
 createPlacedShapeSelectionController()
@@ -440,9 +461,64 @@ function createPlacedShapeSelectionController() {
 
     pointerDownPos = null
 
+    if (getFirstSupportedPreviewOrigin(getPlacedShapePointerHits(event))) {
+      return
+    }
+
     const placedShapeId = getPlacedShapeIdAtPointer(event)
 
     selectPlacedShape(placedShapeId)
+  })
+}
+
+function getPlacedShapePointerHits(event: PointerEvent | undefined): GridPointerHit[] {
+  if (!event) {
+    return []
+  }
+
+  const raycaster = new THREE.Raycaster()
+  const pointer = new THREE.Vector2()
+  const rect = mainScene.renderer.domElement.getBoundingClientRect()
+
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  raycaster.setFromCamera(pointer, mainScene.camera)
+
+  const placedMeshes = placedShapes.flatMap((shape) => (
+    shape.group.children
+  ))
+  const intersections = raycaster.intersectObjects(placedMeshes, false)
+
+  return intersections.flatMap((intersection) => {
+    const placedShapeId = intersection.object.userData.placedShapeId
+    const placedShape = typeof placedShapeId === "string"
+      ? placedShapes.find((shape) => shape.id === placedShapeId)
+      : undefined
+    const normal = intersection.face?.normal
+
+    if (!placedShape || !normal) {
+      return []
+    }
+
+    const mesh = intersection.object
+    const localOffset = {
+      x: Math.round(mesh.position.x),
+      y: Math.round(mesh.position.y),
+      z: Math.round(mesh.position.z),
+    }
+
+    return [{
+      gridPos: {
+        x: placedShape.origin.x + localOffset.x,
+        y: placedShape.origin.y + localOffset.y,
+        z: placedShape.origin.z + localOffset.z,
+      },
+      normal: {
+        x: Math.round(normal.x),
+        y: Math.round(normal.y),
+        z: Math.round(normal.z),
+      },
+    }]
   })
 }
 

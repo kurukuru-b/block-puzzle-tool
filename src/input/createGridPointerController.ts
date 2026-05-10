@@ -7,13 +7,18 @@ import {
 } from "../render/mesh/createGridCellHitboxes"
 import type { GridBounds } from "../core/grid/GridBounds"
 
+export type GridPointerHit = {
+  gridPos: GridPos
+  normal: GridPos
+}
+
 type CreateGridPointerControllerParams = {
   bounds: GridBounds
   camera: THREE.Camera
   domElement: HTMLElement
   scene: THREE.Scene
-  onHoverCells: (positions: GridPos[]) => void
-  onTapCells?: (positions: GridPos[]) => void
+  onHoverHits: (hits: GridPointerHit[], event?: PointerEvent) => void
+  onTapHits?: (hits: GridPointerHit[], event: PointerEvent) => void
   shouldHandleTap?: (event: PointerEvent) => boolean
 }
 
@@ -22,8 +27,8 @@ export function createGridPointerController({
   camera,
   domElement,
   scene,
-  onHoverCells,
-  onTapCells,
+  onHoverHits,
+  onTapHits,
   shouldHandleTap,
 }: CreateGridPointerControllerParams): () => void {
   const raycaster = new THREE.Raycaster()
@@ -33,7 +38,7 @@ export function createGridPointerController({
 
   scene.add(hitboxes)
 
-  function getPointedCells(event: PointerEvent): GridPos[] {
+  function getPointerHits(event: PointerEvent): GridPointerHit[] {
     const rect = domElement.getBoundingClientRect()
 
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
@@ -46,13 +51,20 @@ export function createGridPointerController({
       false,
     )
 
-    return intersections.map((intersection) => (
-      intersection.object.userData.gridPos
-    ))
+    return intersections.flatMap((intersection) => {
+      return [{
+        gridPos: intersection.object.userData.gridPos,
+        normal: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+      }]
+    })
   }
 
   function updatePointer(event: PointerEvent) {
-    onHoverCells(getPointedCells(event))
+    onHoverHits(getPointerHits(event), event)
   }
 
   function startPointer(event: PointerEvent) {
@@ -74,15 +86,15 @@ export function createGridPointerController({
       return
     }
 
-    const positions = getPointedCells(event)
+    const hits = getPointerHits(event)
 
-    if (positions.length > 0) {
-      onTapCells?.(positions)
+    if (hits.length > 0) {
+      onTapHits?.(hits, event)
     }
   }
 
   function clearPointer() {
-    onHoverCells([])
+    onHoverHits([])
   }
 
   domElement.addEventListener("pointerdown", startPointer)
