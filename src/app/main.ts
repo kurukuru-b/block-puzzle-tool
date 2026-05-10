@@ -44,6 +44,7 @@ let activeShapeGroup: THREE.Group | null = null
 let selectedShapeId = ""
 let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
 let previewOrigin: GridPos = { x: 0, y: 0, z: 0 }
+let isPreviewVisible = true
 let updatePositionControls: ((pos: GridPos) => void) | null = null
 let updatePlacedShapes: ((shapes: PlacedShapeSummary[]) => void) | null = null
 let updateSelectedPlacedShape: ((id: string | null) => void) | null = null
@@ -63,6 +64,11 @@ function renderSelectedShape() {
 
   if (activeShapeGroup) {
     mainScene.scene.remove(activeShapeGroup)
+    activeShapeGroup = null
+  }
+
+  if (!isPreviewVisible) {
+    return
   }
 
   const rotatedCells = rotateShapeCells(shape.cells, selectedRotation)
@@ -116,6 +122,10 @@ function resetSelectedRotation() {
 }
 
 function placeSelectedShape(): boolean {
+  if (!isPreviewVisible) {
+    return false
+  }
+
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
 
   if (!shape) {
@@ -174,18 +184,8 @@ function placeSelectedShape(): boolean {
 }
 
 function placeSelectedShapeAt(pos: GridPos): boolean {
-  const supportedOrigin = getSupportedPreviewOrigin(pos)
-
-  if (!supportedOrigin) {
-    previewOrigin = {
-      x: pos.x,
-      y: 0,
-      z: pos.z,
-    }
-  } else {
-    previewOrigin = supportedOrigin
-  }
-
+  previewOrigin = pos
+  isPreviewVisible = true
   updatePositionControls?.(previewOrigin)
   renderSelectedShape()
 
@@ -230,16 +230,17 @@ function editSelectedPlacedShape() {
   renderSelectedShape()
 }
 
-function previewSelectedShapeAt(pos: GridPos | null) {
-  if (!pos) {
+function previewSelectedShapeAt(positions: GridPos[]) {
+  const supportedOrigin = getFirstSupportedPreviewOrigin(positions)
+
+  if (!supportedOrigin) {
+    isPreviewVisible = false
+    renderSelectedShape()
     return
   }
 
-  previewOrigin = getSupportedPreviewOrigin(pos) ?? {
-    x: pos.x,
-    y: 0,
-    z: pos.z,
-  }
+  isPreviewVisible = true
+  previewOrigin = supportedOrigin
   updatePositionControls?.(previewOrigin)
   renderSelectedShape()
 }
@@ -250,6 +251,7 @@ function movePreviewOrigin(axis: "x" | "y" | "z", amount: number): GridPos {
     [axis]: clamp(previewOrigin[axis] + amount, 0, DEFAULT_GRID_BOUNDS[axisToSizeKey(axis)] - 1),
   }
 
+  isPreviewVisible = true
   renderSelectedShape()
   updatePositionControls?.(previewOrigin)
 
@@ -328,6 +330,18 @@ function selectNextAvailableShape() {
   updateSelectedShapeControl?.(selectedShapeId)
 }
 
+function getFirstSupportedPreviewOrigin(targets: GridPos[]): GridPos | null {
+  for (const target of targets) {
+    const supportedOrigin = getSupportedPreviewOrigin(target)
+
+    if (supportedOrigin) {
+      return supportedOrigin
+    }
+  }
+
+  return null
+}
+
 function getSupportedPreviewOrigin(target: GridPos): GridPos | null {
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
 
@@ -392,8 +406,14 @@ createGridPointerController({
   camera: mainScene.camera,
   domElement: mainScene.renderer.domElement,
   scene: mainScene.scene,
-  onHoverCell: previewSelectedShapeAt,
-  onTapCell: placeSelectedShapeAt,
+  onHoverCells: previewSelectedShapeAt,
+  onTapCells: (positions) => {
+    const supportedOrigin = getFirstSupportedPreviewOrigin(positions)
+
+    if (supportedOrigin) {
+      placeSelectedShapeAt(supportedOrigin)
+    }
+  },
   shouldHandleTap: (event) => getPlacedShapeIdAtPointer(event) === null,
 })
 

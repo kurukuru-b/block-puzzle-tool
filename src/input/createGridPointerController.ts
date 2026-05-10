@@ -12,8 +12,8 @@ type CreateGridPointerControllerParams = {
   camera: THREE.Camera
   domElement: HTMLElement
   scene: THREE.Scene
-  onHoverCell: (pos: GridPos | null) => void
-  onTapCell?: (pos: GridPos) => void
+  onHoverCells: (positions: GridPos[]) => void
+  onTapCells?: (positions: GridPos[]) => void
   shouldHandleTap?: (event: PointerEvent) => boolean
 }
 
@@ -22,8 +22,8 @@ export function createGridPointerController({
   camera,
   domElement,
   scene,
-  onHoverCell,
-  onTapCell,
+  onHoverCells,
+  onTapCells,
   shouldHandleTap,
 }: CreateGridPointerControllerParams): () => void {
   const raycaster = new THREE.Raycaster()
@@ -33,7 +33,7 @@ export function createGridPointerController({
 
   scene.add(hitboxes)
 
-  function getPointedCell(event: PointerEvent): GridPos | null {
+  function getPointedCells(event: PointerEvent): GridPos[] {
     const rect = domElement.getBoundingClientRect()
 
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
@@ -46,11 +46,13 @@ export function createGridPointerController({
       false,
     )
 
-    return intersections[0]?.object.userData.gridPos ?? null
+    return intersections.map((intersection) => (
+      intersection.object.userData.gridPos
+    ))
   }
 
   function updatePointer(event: PointerEvent) {
-    onHoverCell(getPointedCell(event))
+    onHoverCells(getPointedCells(event))
   }
 
   function startPointer(event: PointerEvent) {
@@ -72,15 +74,15 @@ export function createGridPointerController({
       return
     }
 
-    const pos = getPointedCell(event)
+    const positions = getPointedCells(event)
 
-    if (pos) {
-      onTapCell?.(pos)
+    if (positions.length > 0) {
+      onTapCells?.(positions)
     }
   }
 
   function clearPointer() {
-    onHoverCell(null)
+    onHoverCells([])
   }
 
   domElement.addEventListener("pointerdown", startPointer)
