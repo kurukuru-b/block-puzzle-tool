@@ -160,6 +160,8 @@ button {
 }
 
 .problem-controls,
+.problem-list,
+.problem-management,
 .viewer-actions,
 .timer-panel {
   display: grid;
@@ -179,8 +181,19 @@ button {
   align-items: center;
 }
 
+.problem-list {
+  max-height: 148px;
+  overflow-y: auto;
+}
+
+.problem-management {
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+}
+
 .problem-label,
 .problem-title,
+.problem-status,
 .timer-label {
   display: flex;
   align-items: center;
@@ -245,6 +258,89 @@ button {
   font-size: 12px;
 }
 
+.problem-status {
+  justify-content: flex-start;
+  min-height: 16px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.problem-status.is-error {
+  color: #b91c1c;
+}
+
+.problem-title-input {
+  min-width: 0;
+  height: 34px;
+  border: 1px solid rgba(105, 114, 130, 0.28);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.problem-title-input:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.problem-empty,
+.problem-item {
+  min-height: 34px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.problem-empty {
+  display: flex;
+  align-items: center;
+  color: #6b7280;
+}
+
+.problem-item {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  border: 1px solid rgba(105, 114, 130, 0.24);
+  color: #374151;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+
+.problem-item:hover {
+  border-color: rgba(50, 61, 76, 0.5);
+  background: #ffffff;
+}
+
+.problem-item.is-selected {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1px #2563eb;
+}
+
+.problem-item-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font: 800 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.problem-item-title {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .secondary-action-button.is-selected {
   border-color: #2563eb;
   color: #1d4ed8;
@@ -256,6 +352,14 @@ button {
   border-color: rgba(105, 114, 130, 0.18);
   color: #7c8490;
   background: rgba(229, 231, 235, 0.68);
+  cursor: not-allowed;
+}
+
+.secondary-action-button:disabled,
+.problem-title-input:disabled {
+  border-color: rgba(105, 114, 130, 0.16);
+  color: #9ca3af;
+  background: rgba(229, 231, 235, 0.46);
   cursor: not-allowed;
 }
 

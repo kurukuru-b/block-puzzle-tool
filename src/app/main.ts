@@ -597,6 +597,76 @@ function moveViewerProblem(amount: number) {
   refreshViewerState()
 }
 
+function selectViewerProblem(puzzleId: string) {
+  const puzzles = loadPuzzleLibrary()[viewerDifficulty]
+  const index = puzzles.findIndex((puzzle) => puzzle.id === puzzleId)
+
+  if (index === -1) {
+    return
+  }
+
+  viewerProblemIndex = index
+  loadSelectedViewerPuzzle()
+  refreshViewerState()
+}
+
+function renameSelectedViewerProblem(title: string): { ok: boolean, message: string } {
+  const nextTitle = title.trim()
+
+  if (!nextTitle) {
+    return {
+      ok: false,
+      message: "タイトルを入力してください。",
+    }
+  }
+
+  const library = loadPuzzleLibrary()
+  const puzzles = library[viewerDifficulty]
+  const puzzle = puzzles[viewerProblemIndex]
+
+  if (!puzzle) {
+    return {
+      ok: false,
+      message: "名前を変更する問題がありません。",
+    }
+  }
+
+  puzzle.title = nextTitle
+  savePuzzleLibrary(library)
+  refreshViewerState()
+
+  return {
+    ok: true,
+    message: "Renamed",
+  }
+}
+
+function deleteSelectedViewerProblem(): { ok: boolean, message: string } {
+  const library = loadPuzzleLibrary()
+  const puzzles = library[viewerDifficulty]
+  const puzzle = puzzles[viewerProblemIndex]
+
+  if (!puzzle) {
+    return {
+      ok: false,
+      message: "削除する問題がありません。",
+    }
+  }
+
+  puzzles.splice(viewerProblemIndex, 1)
+  viewerProblemIndex = puzzles.length === 0
+    ? 0
+    : clamp(viewerProblemIndex, 0, puzzles.length - 1)
+  savePuzzleLibrary(library)
+  loadSelectedViewerPuzzle()
+  refreshViewerState()
+
+  return {
+    ok: true,
+    message: `Deleted ${puzzle.title}`,
+  }
+}
+
 function toggleViewerColor() {
   viewerColorEnabled = !viewerColorEnabled
   rebuildAllPlacedShapeGroups()
@@ -684,12 +754,18 @@ function getViewerPanelState(): ViewerPanelState {
   const puzzles = loadPuzzleLibrary()[viewerDifficulty]
   const problemCount = puzzles.length
   const problemIndex = problemCount === 0 ? 0 : clamp(viewerProblemIndex, 0, problemCount - 1)
+  const selectedPuzzle = problemCount === 0 ? null : puzzles[problemIndex]
 
   return {
     difficulty: viewerDifficulty,
     problemIndex,
     problemCount,
-    problemTitle: problemCount === 0 ? "No registered puzzle" : puzzles[problemIndex].title,
+    problemTitle: selectedPuzzle?.title ?? "No registered puzzle",
+    selectedPuzzleId: selectedPuzzle?.id ?? null,
+    puzzles: puzzles.map((puzzle) => ({
+      id: puzzle.id,
+      title: puzzle.title,
+    })),
     colorEnabled: viewerColorEnabled,
     timerText: getTimerText(),
     timerMode,
@@ -1126,6 +1202,9 @@ const shapeSelector = createShapeSelector({
   onSelectPlacedShape: selectPlacedShape,
   onSelectDifficulty: selectViewerDifficulty,
   onMoveProblem: moveViewerProblem,
+  onSelectProblem: selectViewerProblem,
+  onRenameProblem: renameSelectedViewerProblem,
+  onDeleteProblem: deleteSelectedViewerProblem,
   onToggleColor: toggleViewerColor,
   onTimerStartStop: startStopTimer,
   onTimerReset: resetTimer,

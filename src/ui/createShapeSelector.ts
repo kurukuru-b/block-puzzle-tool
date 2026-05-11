@@ -18,11 +18,18 @@ export type ImportPuzzleResult = {
   message: string
 }
 
+export type ViewerPuzzleSummary = {
+  id: string
+  title: string
+}
+
 export type ViewerPanelState = {
   difficulty: PuzzleDifficulty
   problemIndex: number
   problemCount: number
   problemTitle: string
+  selectedPuzzleId: string | null
+  puzzles: ViewerPuzzleSummary[]
   colorEnabled: boolean
   timerText: string
   timerMode: TimerMode
@@ -44,6 +51,9 @@ type CreateShapeSelectorParams = {
   onSelectPlacedShape: (placedShapeId: string) => void
   onSelectDifficulty: (difficulty: PuzzleDifficulty) => void
   onMoveProblem: (amount: number) => void
+  onSelectProblem: (puzzleId: string) => void
+  onRenameProblem: (title: string) => ImportPuzzleResult
+  onDeleteProblem: () => ImportPuzzleResult
   onToggleColor: () => void
   onTimerStartStop: () => void
   onTimerReset: () => void
@@ -83,6 +93,9 @@ export function createShapeSelector({
   onSelectPlacedShape,
   onSelectDifficulty,
   onMoveProblem,
+  onSelectProblem,
+  onRenameProblem,
+  onDeleteProblem,
   onToggleColor,
   onTimerStartStop,
   onTimerReset,
@@ -321,6 +334,48 @@ export function createShapeSelector({
   const problemTitle = document.createElement("span")
   problemTitle.className = "problem-title"
   viewerPanel.appendChild(problemTitle)
+
+  const problemList = document.createElement("div")
+  problemList.className = "problem-list"
+  viewerPanel.appendChild(problemList)
+
+  const problemManagement = document.createElement("div")
+  problemManagement.className = "problem-management"
+  viewerPanel.appendChild(problemManagement)
+
+  const problemTitleInput = document.createElement("input")
+  problemTitleInput.type = "text"
+  problemTitleInput.className = "problem-title-input"
+  problemTitleInput.placeholder = "Problem title"
+  problemManagement.appendChild(problemTitleInput)
+
+  const renameProblemButton = document.createElement("button")
+  renameProblemButton.type = "button"
+  renameProblemButton.className = "secondary-action-button"
+  renameProblemButton.textContent = "Rename"
+  renameProblemButton.addEventListener("click", () => {
+    const result = onRenameProblem(problemTitleInput.value)
+
+    problemStatus.textContent = result.message
+    problemStatus.classList.toggle("is-error", !result.ok)
+  })
+  problemManagement.appendChild(renameProblemButton)
+
+  const deleteProblemButton = document.createElement("button")
+  deleteProblemButton.type = "button"
+  deleteProblemButton.className = "secondary-action-button danger-action-button"
+  deleteProblemButton.textContent = "Delete"
+  deleteProblemButton.addEventListener("click", () => {
+    const result = onDeleteProblem()
+
+    problemStatus.textContent = result.message
+    problemStatus.classList.toggle("is-error", !result.ok)
+  })
+  problemManagement.appendChild(deleteProblemButton)
+
+  const problemStatus = document.createElement("span")
+  problemStatus.className = "problem-status"
+  viewerPanel.appendChild(problemStatus)
 
   const viewerActions = document.createElement("div")
   viewerActions.className = "viewer-actions"
@@ -612,6 +667,16 @@ export function createShapeSelector({
     problemTitle.textContent = state.problemTitle
     previousProblemButton.disabled = state.problemCount <= 1
     nextProblemButton.disabled = state.problemCount <= 1
+    problemTitleInput.disabled = state.selectedPuzzleId === null
+    renameProblemButton.disabled = state.selectedPuzzleId === null
+    deleteProblemButton.disabled = state.selectedPuzzleId === null
+
+    if (document.activeElement !== problemTitleInput) {
+      problemTitleInput.value = state.selectedPuzzleId ? state.problemTitle : ""
+    }
+
+    rebuildProblemList(state)
+
     colorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
     colorButton.classList.toggle("is-selected", state.colorEnabled)
     timerLabel.textContent = state.timerText
@@ -628,6 +693,43 @@ export function createShapeSelector({
     }
 
     registerButton.textContent = "Register"
+  }
+
+  function rebuildProblemList(state: ViewerPanelState) {
+    problemList.replaceChildren()
+
+    if (state.puzzles.length === 0) {
+      const empty = document.createElement("span")
+      empty.className = "problem-empty"
+      empty.textContent = "No registered problems"
+      problemList.appendChild(empty)
+      return
+    }
+
+    state.puzzles.forEach((puzzle, index) => {
+      const item = document.createElement("button")
+      item.type = "button"
+      item.className = "problem-item"
+      item.classList.toggle("is-selected", puzzle.id === state.selectedPuzzleId)
+      item.setAttribute("aria-pressed", String(puzzle.id === state.selectedPuzzleId))
+      item.addEventListener("click", () => {
+        onSelectProblem(puzzle.id)
+        problemStatus.textContent = ""
+        problemStatus.classList.remove("is-error")
+      })
+
+      const number = document.createElement("span")
+      number.className = "problem-item-number"
+      number.textContent = String(index + 1)
+      item.appendChild(number)
+
+      const title = document.createElement("span")
+      title.className = "problem-item-title"
+      title.textContent = puzzle.title
+      item.appendChild(title)
+
+      problemList.appendChild(item)
+    })
   }
 
   function formatDifficulty(difficulty: PuzzleDifficulty): string {
