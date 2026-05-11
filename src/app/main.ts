@@ -49,14 +49,14 @@ type PlacedShapeRecord = PlacedShape & {
 }
 
 let activeShapeGroup: THREE.Group | null = null
-let selectedShapeId = ""
+let selectedShapeId: string | null = null
 let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
 let previewOrigin: GridPos = { x: 0, y: 0, z: 0 }
 let isPreviewVisible = true
 let updatePositionControls: ((pos: GridPos) => void) | null = null
 let updatePlacedShapes: ((shapes: PlacedShapeSummary[]) => void) | null = null
 let updateSelectedPlacedShape: ((id: string | null) => void) | null = null
-let updateSelectedShapeControl: ((shapeId: string) => void) | null = null
+let updateSelectedShapeControl: ((shapeId: string | null) => void) | null = null
 let updateShapeAvailability: ((shapeId: string, isAvailable: boolean) => void) | null = null
 let selectedPlacedShapeId: string | null = null
 let nextPlacedShapeId = 1
@@ -64,15 +64,19 @@ const placedShapes: PlacedShapeRecord[] = []
 const occupiedCells = new Set<string>()
 
 function renderSelectedShape() {
+  if (activeShapeGroup) {
+    mainScene.scene.remove(activeShapeGroup)
+    activeShapeGroup = null
+  }
+
+  if (!selectedShapeId || selectedPlacedShapeId) {
+    return
+  }
+
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
 
   if (!shape) {
     throw new Error(`Shape not found: ${selectedShapeId}`)
-  }
-
-  if (activeShapeGroup) {
-    mainScene.scene.remove(activeShapeGroup)
-    activeShapeGroup = null
   }
 
   if (!isPreviewVisible) {
@@ -111,11 +115,33 @@ function selectShape(shapeId: string) {
   selectedShapeId = shapeId
   selectedRotation = { x: 0, y: 0, z: 0 }
   selectedPlacedShapeId = null
+  isPreviewVisible = true
+  updateSelectedShapeControl?.(selectedShapeId)
   updateSelectedPlacedShape?.(selectedPlacedShapeId)
+  updatePlacedShapeHighlights()
+  renderSelectedShape()
+}
+
+function clearSelection() {
+  selectedShapeId = null
+  selectedPlacedShapeId = null
+  isPreviewVisible = false
+  updateSelectedShapeControl?.(selectedShapeId)
+  updateSelectedPlacedShape?.(selectedPlacedShapeId)
+  updatePlacedShapeHighlights()
   renderSelectedShape()
 }
 
 function rotateSelectedShape(axis: RotationAxis) {
+  if (selectedPlacedShapeId) {
+    rotateSelectedPlacedShape(axis)
+    return
+  }
+
+  if (!selectedShapeId) {
+    return
+  }
+
   selectedRotation = {
     ...selectedRotation,
     [axis]: selectedRotation[axis] + 1,
@@ -125,12 +151,21 @@ function rotateSelectedShape(axis: RotationAxis) {
 }
 
 function resetSelectedRotation() {
+  if (selectedPlacedShapeId) {
+    updateSelectedPlacedShapeTransform({ rotation: { x: 0, y: 0, z: 0 } })
+    return
+  }
+
+  if (!selectedShapeId) {
+    return
+  }
+
   selectedRotation = { x: 0, y: 0, z: 0 }
   renderSelectedShape()
 }
 
 function placeSelectedShape(): boolean {
-  if (!isPreviewVisible) {
+  if (!selectedShapeId || !isPreviewVisible) {
     return false
   }
 
@@ -201,30 +236,29 @@ function editSelectedPlacedShape() {
     return
   }
 
-  const { shapeId, origin, rotation } = placedShape
-
-  removePlacedShape(selectedPlacedShapeId)
-  selectedPlacedShapeId = null
-  selectedShapeId = shapeId
-  selectedRotation = { ...rotation }
-  previewOrigin = { ...origin }
+  selectedShapeId = null
+  selectedRotation = { ...placedShape.rotation }
+  previewOrigin = { ...placedShape.origin }
 
   updatePositionControls?.(previewOrigin)
   updateSelectedShapeControl?.(selectedShapeId)
-  updateSelectedPlacedShape?.(selectedPlacedShapeId)
-  refreshPlacedShapeState()
   renderSelectedShape()
 }
 
 function exportPuzzle(): string {
-  return stringifyPuzzleExport(createPuzzleExport(
+  const puzzle = createPuzzleExport(
     DEFAULT_GRID_BOUNDS,
     placedShapes.map((shape) => ({
       shapeId: shape.shapeId,
       origin: shape.origin,
       rotation: shape.rotation,
     })),
-  ))
+  )
+
+  validateImportPuzzle(puzzle)
+  validateSupportedPuzzle(puzzle)
+
+  return stringifyPuzzleExport(puzzle)
 }
 
 function importPuzzle(source: string): { ok: boolean, message: string } {
@@ -238,10 +272,8 @@ function importPuzzle(source: string): { ok: boolean, message: string } {
       addPlacedShape(placedShape)
     }
 
-    selectedPlacedShapeId = null
-    selectNextAvailableShape()
+    clearSelection()
     updateSelectedPlacedShape?.(selectedPlacedShapeId)
-    updateSelectedShapeControl?.(selectedShapeId)
     refreshPlacedShapeState()
     renderSelectedShape()
 
@@ -258,6 +290,10 @@ function importPuzzle(source: string): { ok: boolean, message: string } {
 }
 
 function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {
+  if (!selectedShapeId || selectedPlacedShapeId) {
+    return
+  }
+
   const candidateOrigin = getFirstPreviewOrigin([
     ...getPlacedShapePointerHits(event),
     ...hits,
@@ -276,6 +312,27 @@ function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {
 }
 
 function movePreviewOrigin(axis: "x" | "y" | "z", amount: number): GridPos {
+  if (selectedPlacedShapeId) {
+    const selectedPlacedShape = getSelectedPlacedShape()
+
+    if (!selectedPlacedShape) {
+      return previewOrigin
+    }
+
+    const nextOrigin = {
+      ...selectedPlacedShape.origin,
+      [axis]: clamp(selectedPlacedShape.origin[axis] + amount, 0, DEFAULT_GRID_BOUNDS[axisToSizeKey(axis)] - 1),
+    }
+
+    updateSelectedPlacedShapeTransform({ origin: nextOrigin })
+
+    return getSelectedPlacedShape()?.origin ?? selectedPlacedShape.origin
+  }
+
+  if (!selectedShapeId) {
+    return previewOrigin
+  }
+
   previewOrigin = {
     ...previewOrigin,
     [axis]: clamp(previewOrigin[axis] + amount, 0, DEFAULT_GRID_BOUNDS[axisToSizeKey(axis)] - 1),
@@ -290,12 +347,21 @@ function movePreviewOrigin(axis: "x" | "y" | "z", amount: number): GridPos {
 
 function selectPlacedShape(placedShapeId: string | null) {
   selectedPlacedShapeId = placedShapeId
+  selectedShapeId = null
+  isPreviewVisible = false
+  updateSelectedShapeControl?.(selectedShapeId)
   updateSelectedPlacedShape?.(selectedPlacedShapeId)
+  renderSelectedShape()
 
-  for (const placedShape of placedShapes) {
-    const isSelected = placedShape.id === selectedPlacedShapeId
-    placedShape.group.scale.setScalar(isSelected ? 1.06 : 1)
+  const placedShape = getSelectedPlacedShape()
+
+  if (placedShape) {
+    previewOrigin = { ...placedShape.origin }
+    selectedRotation = { ...placedShape.rotation }
+    updatePositionControls?.(previewOrigin)
   }
+
+  updatePlacedShapeHighlights()
 }
 
 function removePlacedShape(placedShapeId: string) {
@@ -358,6 +424,13 @@ function clearPlacedShapes() {
   selectedPlacedShapeId = null
 }
 
+function updatePlacedShapeHighlights() {
+  for (const placedShape of placedShapes) {
+    const isSelected = placedShape.id === selectedPlacedShapeId
+    placedShape.group.scale.setScalar(isSelected ? 1.06 : 1)
+  }
+}
+
 function refreshPlacedShapeState() {
   updatePlacedShapes?.(placedShapes.map((shape) => ({
     id: shape.id,
@@ -388,6 +461,10 @@ function rebuildOccupiedCells() {
 }
 
 function canUseSelectedShape(): boolean {
+  if (!selectedShapeId) {
+    return false
+  }
+
   return !isShapePlaced(selectedShapeId)
 }
 
@@ -399,6 +476,7 @@ function selectNextAvailableShape() {
   const nextShape = shapeDefinitions.find((shape) => !isShapePlaced(shape.id))
 
   if (!nextShape) {
+    clearSelection()
     return
   }
 
@@ -448,6 +526,177 @@ function validateImportPuzzle(puzzle: PuzzleExport) {
   }
 }
 
+function validateSupportedPuzzle(puzzle: PuzzleExport) {
+  const allCells = new Set<string>()
+
+  for (const placedShape of puzzle.placedShapes) {
+    const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)
+
+    if (!shape) {
+      throw new Error(`未定義のshapeIdです: ${placedShape.shapeId}`)
+    }
+
+    for (const pos of getPlacedCellPositions(
+      placedShape.origin,
+      rotateShapeCells(shape.cells, placedShape.rotation),
+    )) {
+      allCells.add(gridPosKey(pos))
+    }
+  }
+
+  for (const placedShape of puzzle.placedShapes) {
+    const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)!
+    const ownCells = getPlacedCellPositions(
+      placedShape.origin,
+      rotateShapeCells(shape.cells, placedShape.rotation),
+    )
+    const otherCells = new Set(allCells)
+
+    for (const pos of ownCells) {
+      otherCells.delete(gridPosKey(pos))
+    }
+
+    if (!isShapeSupported(
+      placedShape.origin,
+      rotateShapeCells(shape.cells, placedShape.rotation),
+      otherCells,
+    )) {
+      throw new Error(`接地していないshapeがあります: ${placedShape.shapeId}`)
+    }
+  }
+}
+
+function rotateSelectedPlacedShape(axis: RotationAxis) {
+  const selectedPlacedShape = getSelectedPlacedShape()
+
+  if (!selectedPlacedShape) {
+    return
+  }
+
+  updateSelectedPlacedShapeTransform({
+    rotation: {
+      ...selectedPlacedShape.rotation,
+      [axis]: selectedPlacedShape.rotation[axis] + 1,
+    },
+  })
+}
+
+function updateSelectedPlacedShapeTransform(
+  patch: Partial<Pick<PlacedShape, "origin" | "rotation">>,
+) {
+  const selectedPlacedShape = getSelectedPlacedShape()
+
+  if (!selectedPlacedShape) {
+    return
+  }
+
+  const nextPlacedShape = {
+    shapeId: selectedPlacedShape.shapeId,
+    origin: patch.origin ?? selectedPlacedShape.origin,
+    rotation: patch.rotation ?? selectedPlacedShape.rotation,
+  }
+
+  if (!isPlacedShapeTransformValid(nextPlacedShape, selectedPlacedShape.id)) {
+    updatePositionControls?.(selectedPlacedShape.origin)
+    return
+  }
+
+  selectedPlacedShape.origin = { ...nextPlacedShape.origin }
+  selectedPlacedShape.rotation = { ...nextPlacedShape.rotation }
+  rebuildPlacedShapeGroup(selectedPlacedShape)
+  rebuildOccupiedCells()
+  previewOrigin = { ...selectedPlacedShape.origin }
+  selectedRotation = { ...selectedPlacedShape.rotation }
+  updatePositionControls?.(selectedPlacedShape.origin)
+}
+
+function isPlacedShapeTransformValid(
+  placedShape: PlacedShape,
+  excludedPlacedShapeId: string,
+): boolean {
+  const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)
+
+  if (!shape) {
+    return false
+  }
+
+  const rotatedCells = rotateShapeCells(shape.cells, placedShape.rotation)
+  const otherCells = getOccupiedCellsExcluding(excludedPlacedShapeId)
+
+  return isShapeInsideGrid(
+    placedShape.origin,
+    rotatedCells,
+    DEFAULT_GRID_BOUNDS,
+  ) && !hasOverlappingCells(
+    placedShape.origin,
+    rotatedCells,
+    otherCells,
+  ) && isShapeSupported(
+    placedShape.origin,
+    rotatedCells,
+    otherCells,
+  )
+}
+
+function rebuildPlacedShapeGroup(placedShape: PlacedShapeRecord) {
+  const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)
+
+  if (!shape) {
+    throw new Error(`Shape not found: ${placedShape.shapeId}`)
+  }
+
+  mainScene.scene.remove(placedShape.group)
+
+  const placedGroup = createShapeMeshGroup({
+    ...shape,
+    cells: rotateShapeCells(shape.cells, placedShape.rotation),
+  })
+  const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
+
+  placedGroup.position.set(worldPos.x, worldPos.y, worldPos.z)
+  placedGroup.userData.placedShapeId = placedShape.id
+  placedGroup.traverse((object) => {
+    object.userData.placedShapeId = placedShape.id
+  })
+
+  placedShape.group = placedGroup
+  mainScene.scene.add(placedGroup)
+  updatePlacedShapeHighlights()
+}
+
+function getOccupiedCellsExcluding(excludedPlacedShapeId: string): Set<string> {
+  const cells = new Set<string>()
+
+  for (const placedShape of placedShapes) {
+    if (placedShape.id === excludedPlacedShapeId) {
+      continue
+    }
+
+    const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)
+
+    if (!shape) {
+      throw new Error(`Shape not found: ${placedShape.shapeId}`)
+    }
+
+    for (const pos of getPlacedCellPositions(
+      placedShape.origin,
+      rotateShapeCells(shape.cells, placedShape.rotation),
+    )) {
+      cells.add(gridPosKey(pos))
+    }
+  }
+
+  return cells
+}
+
+function getSelectedPlacedShape(): PlacedShapeRecord | null {
+  if (!selectedPlacedShapeId) {
+    return null
+  }
+
+  return placedShapes.find((shape) => shape.id === selectedPlacedShapeId) ?? null
+}
+
 function getFirstPreviewOrigin(hits: GridPointerHit[]): GridPos | null {
   for (const hit of hits) {
     const origin = getPreviewOrigin(hit)
@@ -461,6 +710,10 @@ function getFirstPreviewOrigin(hits: GridPointerHit[]): GridPos | null {
 }
 
 function getPreviewOrigin(hit: GridPointerHit): GridPos | null {
+  if (!selectedShapeId) {
+    return null
+  }
+
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
 
   if (!shape || !canUseSelectedShape()) {
@@ -516,19 +769,17 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-const initialShape = shapeDefinitions[0]
-
-if (!initialShape) {
+if (shapeDefinitions.length === 0) {
   throw new Error("No shape definitions found")
 }
 
-selectedShapeId = initialShape.id
-
 const shapeSelector = createShapeSelector({
   shapes: shapeDefinitions,
-  selectedShapeId: initialShape.id,
+  selectedShapeId,
   initialPosition: previewOrigin,
   onSelect: selectShape,
+  onClearSelection: clearSelection,
+  onSelectPlacedShape: selectPlacedShape,
   onRotate: rotateSelectedShape,
   onResetRotation: resetSelectedRotation,
   onMovePosition: movePreviewOrigin,
@@ -566,7 +817,7 @@ createGridPointerController({
 
 createPlacedShapeSelectionController()
 
-renderSelectedShape()
+clearSelection()
 refreshPlacedShapeState()
 
 function createPlacedShapeSelectionController() {

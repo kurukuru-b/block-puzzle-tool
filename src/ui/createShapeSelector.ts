@@ -16,9 +16,11 @@ export type ImportPuzzleResult = {
 
 type CreateShapeSelectorParams = {
   shapes: ShapeDefinition[]
-  selectedShapeId: string
+  selectedShapeId: string | null
   initialPosition: GridPos
   onSelect: (shapeId: string) => void
+  onClearSelection: () => void
+  onSelectPlacedShape: (placedShapeId: string) => void
   onRotate: (axis: RotationAxis) => void
   onResetRotation: () => void
   onMovePosition: (axis: GridAxis, amount: number) => GridPos
@@ -32,7 +34,7 @@ type CreateShapeSelectorParams = {
 type ShapeSelector = {
   element: HTMLElement
   setPosition: (pos: GridPos) => void
-  setSelectedShape: (shapeId: string) => void
+  setSelectedShape: (shapeId: string | null) => void
   setPlacedShapes: (shapes: PlacedShapeSummary[]) => void
   setSelectedPlacedShape: (id: string | null) => void
   setShapeAvailability: (shapeId: string, isAvailable: boolean) => void
@@ -43,6 +45,8 @@ export function createShapeSelector({
   selectedShapeId,
   initialPosition,
   onSelect,
+  onClearSelection,
+  onSelectPlacedShape,
   onRotate,
   onResetRotation,
   onMovePosition,
@@ -58,6 +62,18 @@ export function createShapeSelector({
   const title = document.createElement("h1")
   title.textContent = "Block Puzzle Tool"
   panel.appendChild(title)
+
+  const clearSelectionButton = document.createElement("button")
+  clearSelectionButton.type = "button"
+  clearSelectionButton.className = "secondary-action-button clear-selection-button"
+  clearSelectionButton.textContent = "None"
+  clearSelectionButton.setAttribute("aria-label", "Clear current selection")
+  clearSelectionButton.addEventListener("click", () => {
+    onClearSelection()
+    setSelectedShape(null)
+    setSelectedPlacedShape(null)
+  })
+  panel.appendChild(clearSelectionButton)
 
   const shapeList = document.createElement("div")
   shapeList.className = "shape-list"
@@ -223,6 +239,12 @@ export function createShapeSelector({
   exportButton.textContent = "Export"
   dataActions.appendChild(exportButton)
 
+  const copyButton = document.createElement("button")
+  copyButton.type = "button"
+  copyButton.className = "secondary-action-button export-button"
+  copyButton.textContent = "Copy"
+  dataActions.appendChild(copyButton)
+
   const importButton = document.createElement("button")
   importButton.type = "button"
   importButton.className = "secondary-action-button export-button"
@@ -240,11 +262,46 @@ export function createShapeSelector({
   dataControls.appendChild(importStatus)
 
   exportButton.addEventListener("click", () => {
-    dataText.value = onExportPuzzle()
-    importStatus.textContent = "Exported"
-    importStatus.classList.remove("is-error")
-    dataText.focus()
-    dataText.select()
+    try {
+      dataText.value = onExportPuzzle()
+      importStatus.textContent = "Exported"
+      importStatus.classList.remove("is-error")
+      dataText.focus()
+      dataText.select()
+    } catch (error) {
+      importStatus.textContent = error instanceof Error ? error.message : "exportに失敗しました。"
+      importStatus.classList.add("is-error")
+    }
+  })
+
+  copyButton.addEventListener("click", async () => {
+    if (!dataText.value.trim()) {
+      try {
+        dataText.value = onExportPuzzle()
+      } catch (error) {
+        importStatus.textContent = error instanceof Error ? error.message : "exportに失敗しました。"
+        importStatus.classList.add("is-error")
+        return
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(dataText.value)
+      importStatus.textContent = "Copied"
+      importStatus.classList.remove("is-error")
+    } catch {
+      dataText.focus()
+      dataText.select()
+
+      if (document.execCommand("copy")) {
+        importStatus.textContent = "Copied"
+        importStatus.classList.remove("is-error")
+        return
+      }
+
+      importStatus.textContent = "Copy failed. Text selected."
+      importStatus.classList.add("is-error")
+    }
   })
 
   importButton.addEventListener("click", () => {
@@ -273,7 +330,10 @@ export function createShapeSelector({
     setShapeAvailability,
   }
 
-  function setSelectedShape(shapeId: string) {
+  function setSelectedShape(shapeId: string | null) {
+    placeButton.disabled = shapeId === null
+    clearSelectionButton.classList.toggle("is-selected", shapeId === null)
+
     for (const item of shapeList.querySelectorAll<HTMLButtonElement>(".shape-button")) {
       const isSelected = item.dataset.shapeId === shapeId
       item.classList.toggle("is-selected", isSelected)
@@ -298,6 +358,7 @@ export function createShapeSelector({
       item.className = "placed-item"
       item.dataset.placedShapeId = shape.id
       item.textContent = shape.shapeId
+      item.addEventListener("click", () => onSelectPlacedShape(shape.id))
       placedList.appendChild(item)
     }
   }
