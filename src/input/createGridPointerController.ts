@@ -10,7 +10,6 @@ import type { GridBounds } from "../core/grid/GridBounds"
 export type GridPointerHit = {
   gridPos: GridPos
   normal: GridPos
-  source: "floor" | "grid" | "block"
 }
 
 type CreateGridPointerControllerParams = {
@@ -58,9 +57,11 @@ export function createGridPointerController({
       false,
     )
 
-    return [
-      ...(floorHit ? [floorHit] : []),
-      ...intersections.flatMap((intersection) => {
+    if (floorHit) {
+      return [floorHit]
+    }
+
+    return intersections.flatMap((intersection) => {
         return [{
           gridPos: intersection.object.userData.gridPos,
           normal: {
@@ -68,10 +69,8 @@ export function createGridPointerController({
             y: 0,
             z: 0,
           },
-          source: "grid" as const,
         }]
-      }),
-    ]
+      })
   }
 
   function getFloorHit(): GridPointerHit | null {
@@ -89,7 +88,6 @@ export function createGridPointerController({
     return {
       gridPos: { x, y: 0, z },
       normal: { x: 0, y: 0, z: 0 },
-      source: "floor",
     }
   }
 

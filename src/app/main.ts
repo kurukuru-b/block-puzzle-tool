@@ -336,27 +336,18 @@ function selectNextAvailableShape() {
 }
 
 function getFirstPreviewOrigin(hits: GridPointerHit[]): GridPos | null {
-  const contactHits = hits.filter((hit) => (
-    hit.source === "floor" || hit.source === "block"
-  ))
-  const gridHits = hits.filter((hit) => hit.source === "grid")
+  for (const hit of hits) {
+    const origin = getPreviewOrigin(hit)
 
-  for (const contactHit of contactHits) {
-    const placeableOrigin = gridHits
-      .map((hit) => getCoreOriginFromHit(hit))
-      .find((origin) => (
-        origin && isOnContactSide(origin, contactHit) && isPreviewOriginPlaceable(origin)
-      ))
-
-    if (placeableOrigin) {
-      return placeableOrigin
+    if (origin) {
+      return origin
     }
   }
 
-  return contactHits[0] ? getCoreOriginFromHit(contactHits[0]) : null
+  return null
 }
 
-function getCoreOriginFromHit(hit: GridPointerHit): GridPos | null {
+function getPreviewOrigin(hit: GridPointerHit): GridPos | null {
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
 
   if (!shape || !canUseSelectedShape()) {
@@ -368,26 +359,6 @@ function getCoreOriginFromHit(hit: GridPointerHit): GridPos | null {
     y: isFloorColumnHit(hit) ? 0 : hit.gridPos.y + hit.normal.y,
     z: hit.gridPos.z + hit.normal.z,
   }
-}
-
-function isOnContactSide(origin: GridPos, contactHit: GridPointerHit): boolean {
-  if (contactHit.source === "floor") {
-    return origin.y >= 0
-  }
-
-  if (contactHit.normal.x !== 0) {
-    return origin.x === contactHit.gridPos.x + contactHit.normal.x
-  }
-
-  if (contactHit.normal.y !== 0) {
-    return origin.y === contactHit.gridPos.y + contactHit.normal.y
-  }
-
-  if (contactHit.normal.z !== 0) {
-    return origin.z === contactHit.gridPos.z + contactHit.normal.z
-  }
-
-  return false
 }
 
 function isFloorColumnHit(hit: GridPointerHit): boolean {
@@ -558,7 +529,6 @@ function getPlacedShapePointerHits(event: PointerEvent | undefined): GridPointer
         y: Math.round(normal.y),
         z: Math.round(normal.z),
       },
-      source: "block",
     }]
   })
 }
