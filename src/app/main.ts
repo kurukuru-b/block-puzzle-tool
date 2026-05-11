@@ -336,29 +336,67 @@ function selectNextAvailableShape() {
 }
 
 function getFirstPreviewOrigin(hits: GridPointerHit[]): GridPos | null {
-  for (const hit of hits) {
-    const origin = getPreviewOrigin(hit)
+  let fallbackOrigin: GridPos | null = null
 
-    if (origin) {
-      return origin
+  for (const hit of hits) {
+    const origins = getPreviewOrigins(hit)
+    fallbackOrigin ??= origins[0] ?? null
+    const placeableOrigin = origins.find((origin) => (
+      isPreviewOriginPlaceable(origin)
+    ))
+
+    if (placeableOrigin) {
+      return placeableOrigin
     }
   }
 
-  return null
+  return fallbackOrigin
 }
 
-function getPreviewOrigin(hit: GridPointerHit): GridPos | null {
+function getPreviewOrigins(hit: GridPointerHit): GridPos[] {
   const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
 
   if (!shape || !canUseSelectedShape()) {
-    return null
+    return []
   }
 
-  return {
+  const targetCell = {
     x: hit.gridPos.x + hit.normal.x,
     y: isFloorColumnHit(hit) ? 0 : hit.gridPos.y + hit.normal.y,
     z: hit.gridPos.z + hit.normal.z,
   }
+  const rotatedCells = rotateShapeCells(shape.cells, selectedRotation)
+
+  return getAnchorCandidates(rotatedCells).map((cell) => ({
+    x: targetCell.x - cell.x,
+    y: targetCell.y - cell.y,
+    z: targetCell.z - cell.z,
+  }))
+}
+
+function getAnchorCandidates(cells: GridPos[]): GridPos[] {
+  return [...cells].sort((a, b) => {
+    const aIsCore = isSameCell(a, { x: 0, y: 0, z: 0 })
+    const bIsCore = isSameCell(b, { x: 0, y: 0, z: 0 })
+
+    if (aIsCore !== bIsCore) {
+      return aIsCore ? -1 : 1
+    }
+
+    if (a.y !== b.y) {
+      return a.y - b.y
+    }
+
+    if (a.z !== b.z) {
+      return a.z - b.z
+    }
+
+    return a.x - b.x
+  })
+}
+
+function isSameCell(a: GridPos, b: GridPos): boolean {
+  return a.x === b.x && a.y === b.y && a.z === b.z
 }
 
 function isFloorColumnHit(hit: GridPointerHit): boolean {
