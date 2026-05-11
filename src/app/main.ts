@@ -706,9 +706,11 @@ async function moveSelectedViewerProblemDifficulty(
   }
 
   currentPuzzles.splice(viewerProblemIndex, 1)
+  const nextTitle = `${formatDifficulty(difficulty)} ${library[difficulty].length + 1}`
   const movedPuzzle: StoredPuzzle = {
     ...puzzle,
     difficulty,
+    title: nextTitle,
   }
 
   library[difficulty].push(movedPuzzle)
@@ -718,7 +720,11 @@ async function moveSelectedViewerProblemDifficulty(
   loadSelectedViewerPuzzle()
   refreshViewerState()
 
-  const dbResult = await puzzleLibraryStore.movePuzzle(movedPuzzle.id, difficulty)
+  const dbResult = await puzzleLibraryStore.movePuzzle(
+    movedPuzzle.id,
+    difficulty,
+    movedPuzzle.title,
+  )
 
   if (!dbResult.ok) {
     return {
@@ -730,8 +736,8 @@ async function moveSelectedViewerProblemDifficulty(
   return {
     ok: true,
     message: puzzleLibraryStore.isRemoteConfigured()
-      ? `Moved to ${formatDifficulty(difficulty)} in DB`
-      : `Moved to ${formatDifficulty(difficulty)} locally`,
+      ? `Moved to ${movedPuzzle.title} in DB`
+      : `Moved to ${movedPuzzle.title} locally`,
   }
 }
 

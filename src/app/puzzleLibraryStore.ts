@@ -159,7 +159,11 @@ export function createPuzzleLibraryStore() {
     })
   }
 
-  async function movePuzzle(id: string, difficulty: PuzzleDifficulty): Promise<StoreResult> {
+  async function movePuzzle(
+    id: string,
+    difficulty: PuzzleDifficulty,
+    title: string,
+  ): Promise<StoreResult> {
     if (!isRemoteConfigured()) {
       return {
         ok: true,
@@ -174,6 +178,7 @@ export function createPuzzleLibraryStore() {
       },
       body: JSON.stringify({
         difficulty,
+        title,
         updated_at: new Date().toISOString(),
       }),
     })
