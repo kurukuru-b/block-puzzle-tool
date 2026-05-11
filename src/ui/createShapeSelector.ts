@@ -52,6 +52,7 @@ type CreateShapeSelectorParams = {
   onSelectPlacedShape: (placedShapeId: string) => void
   onSelectDifficulty: (difficulty: PuzzleDifficulty) => void
   onMoveProblem: (amount: number) => void
+  onRandomProblem: () => void
   onSelectProblem: (puzzleId: string) => void
   onRenameProblem: (title: string) => MaybePromise<ImportPuzzleResult>
   onDeleteProblem: () => MaybePromise<ImportPuzzleResult>
@@ -94,6 +95,7 @@ export function createShapeSelector({
   onSelectPlacedShape,
   onSelectDifficulty,
   onMoveProblem,
+  onRandomProblem,
   onSelectProblem,
   onRenameProblem,
   onDeleteProblem,
@@ -331,6 +333,14 @@ export function createShapeSelector({
   nextProblemButton.setAttribute("aria-label", "Next problem")
   nextProblemButton.addEventListener("click", () => onMoveProblem(1))
   problemControls.appendChild(nextProblemButton)
+
+  const randomProblemButton = document.createElement("button")
+  randomProblemButton.type = "button"
+  randomProblemButton.className = "secondary-action-button random-problem-button"
+  randomProblemButton.textContent = "Random"
+  randomProblemButton.setAttribute("aria-label", "Random problem")
+  randomProblemButton.addEventListener("click", onRandomProblem)
+  problemControls.appendChild(randomProblemButton)
 
   const problemTitle = document.createElement("span")
   problemTitle.className = "problem-title"
@@ -668,6 +678,7 @@ export function createShapeSelector({
     problemTitle.textContent = state.problemTitle
     previousProblemButton.disabled = state.problemCount <= 1
     nextProblemButton.disabled = state.problemCount <= 1
+    randomProblemButton.disabled = state.problemCount === 0
     problemTitleInput.disabled = state.selectedPuzzleId === null
     renameProblemButton.disabled = state.selectedPuzzleId === null
     deleteProblemButton.disabled = state.selectedPuzzleId === null

@@ -176,6 +176,11 @@ button {
   align-items: center;
 }
 
+.random-problem-button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
 .viewer-actions {
   grid-template-columns: 1fr;
   align-items: center;

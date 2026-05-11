@@ -604,6 +604,33 @@ function moveViewerProblem(amount: number) {
   refreshViewerState()
 }
 
+function selectRandomViewerProblem() {
+  const puzzles = loadPuzzleLibrary()[viewerDifficulty]
+
+  if (puzzles.length === 0) {
+    viewerProblemIndex = 0
+    refreshViewerState()
+    return
+  }
+
+  if (puzzles.length === 1) {
+    viewerProblemIndex = 0
+    loadSelectedViewerPuzzle()
+    refreshViewerState()
+    return
+  }
+
+  let nextIndex = Math.floor(Math.random() * puzzles.length)
+
+  if (nextIndex === viewerProblemIndex) {
+    nextIndex = (nextIndex + 1) % puzzles.length
+  }
+
+  viewerProblemIndex = nextIndex
+  loadSelectedViewerPuzzle()
+  refreshViewerState()
+}
+
 function selectViewerProblem(puzzleId: string) {
   const puzzles = loadPuzzleLibrary()[viewerDifficulty]
   const index = puzzles.findIndex((puzzle) => puzzle.id === puzzleId)
@@ -1202,6 +1229,7 @@ const shapeSelector = createShapeSelector({
   onSelectPlacedShape: selectPlacedShape,
   onSelectDifficulty: selectViewerDifficulty,
   onMoveProblem: moveViewerProblem,
+  onRandomProblem: selectRandomViewerProblem,
   onSelectProblem: selectViewerProblem,
   onRenameProblem: renameSelectedViewerProblem,
   onDeleteProblem: deleteSelectedViewerProblem,
