@@ -60,6 +60,7 @@ type StoredPuzzle = PuzzleExport & {
 }
 
 type PuzzleLibrary = Record<PuzzleDifficulty, StoredPuzzle[]>
+type StoredPuzzleLibrary = Partial<Record<PuzzleDifficulty | "expert", StoredPuzzle[]>>
 
 let activeShapeGroup: THREE.Group | null = null
 let appMode: AppMode = "editor"
@@ -595,12 +596,15 @@ function refreshViewerState() {
 }
 
 function getViewerPanelState(): ViewerPanelState {
-  const problemCount = loadPuzzleLibrary()[viewerDifficulty].length
+  const puzzles = loadPuzzleLibrary()[viewerDifficulty]
+  const problemCount = puzzles.length
+  const problemIndex = problemCount === 0 ? 0 : clamp(viewerProblemIndex, 0, problemCount - 1)
 
   return {
     difficulty: viewerDifficulty,
-    problemIndex: problemCount === 0 ? 0 : clamp(viewerProblemIndex, 0, problemCount - 1),
+    problemIndex,
     problemCount,
+    problemTitle: problemCount === 0 ? "No registered puzzle" : puzzles[problemIndex].title,
     colorEnabled: viewerColorEnabled,
     timerText: "00:00",
   }
@@ -634,13 +638,19 @@ function loadPuzzleLibrary(): PuzzleLibrary {
   }
 
   try {
-    const parsed = JSON.parse(raw) as Partial<Record<PuzzleDifficulty, StoredPuzzle[]>>
+    const parsed = JSON.parse(raw) as StoredPuzzleLibrary
 
     return {
       easy: Array.isArray(parsed.easy) ? parsed.easy : [],
       normal: Array.isArray(parsed.normal) ? parsed.normal : [],
       hard: Array.isArray(parsed.hard) ? parsed.hard : [],
-      expert: Array.isArray(parsed.expert) ? parsed.expert : [],
+      challenge: [
+        ...(Array.isArray(parsed.challenge) ? parsed.challenge : []),
+        ...(Array.isArray(parsed.expert) ? parsed.expert.map((puzzle) => ({
+          ...puzzle,
+          difficulty: "challenge" as const,
+        })) : []),
+      ],
     }
   } catch {
     return emptyLibrary
@@ -656,7 +666,7 @@ function createEmptyPuzzleLibrary(): PuzzleLibrary {
     easy: [],
     normal: [],
     hard: [],
-    expert: [],
+    challenge: [],
   }
 }
 

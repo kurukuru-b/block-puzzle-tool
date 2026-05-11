@@ -179,6 +179,7 @@ button {
 }
 
 .problem-label,
+.problem-title,
 .timer-label {
   display: flex;
   align-items: center;
@@ -187,6 +188,14 @@ button {
   color: #374151;
   font-size: 12px;
   font-weight: 800;
+}
+
+.problem-title {
+  justify-content: flex-start;
+  min-height: 24px;
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 12px;
 }
 
 .secondary-action-button.is-selected {

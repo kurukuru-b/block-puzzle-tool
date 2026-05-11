@@ -6,7 +6,7 @@ type GridAxis = "x" | "y" | "z"
 
 export type AppMode = "editor" | "viewer"
 
-export type PuzzleDifficulty = "easy" | "normal" | "hard" | "expert"
+export type PuzzleDifficulty = "easy" | "normal" | "hard" | "challenge"
 
 export type PlacedShapeSummary = {
   id: string
@@ -22,6 +22,7 @@ export type ViewerPanelState = {
   difficulty: PuzzleDifficulty
   problemIndex: number
   problemCount: number
+  problemTitle: string
   colorEnabled: boolean
   timerText: string
 }
@@ -270,7 +271,7 @@ export function createShapeSelector({
   viewerPanel.appendChild(difficultyControls)
   const difficultyButtons = new Map<PuzzleDifficulty, HTMLButtonElement>()
 
-  for (const difficulty of ["easy", "normal", "hard", "expert"] satisfies PuzzleDifficulty[]) {
+  for (const difficulty of ["easy", "normal", "hard", "challenge"] satisfies PuzzleDifficulty[]) {
     const button = document.createElement("button")
     button.type = "button"
     button.className = "secondary-action-button difficulty-button"
@@ -303,6 +304,10 @@ export function createShapeSelector({
   nextProblemButton.setAttribute("aria-label", "Next problem")
   nextProblemButton.addEventListener("click", () => onMoveProblem(1))
   problemControls.appendChild(nextProblemButton)
+
+  const problemTitle = document.createElement("span")
+  problemTitle.className = "problem-title"
+  viewerPanel.appendChild(problemTitle)
 
   const viewerActions = document.createElement("div")
   viewerActions.className = "viewer-actions"
@@ -510,6 +515,7 @@ export function createShapeSelector({
     problemLabel.textContent = state.problemCount === 0
       ? "No problems"
       : `${state.problemIndex + 1} / ${state.problemCount}`
+    problemTitle.textContent = state.problemTitle
     previousProblemButton.disabled = state.problemCount <= 1
     nextProblemButton.disabled = state.problemCount <= 1
     colorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
