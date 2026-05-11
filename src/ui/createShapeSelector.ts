@@ -370,16 +370,16 @@ export function createShapeSelector({
   countdownInput.step = "1"
   countdownInput.className = "countdown-input"
   countdownInput.addEventListener("change", () => {
-    const minutes = Number.parseInt(countdownInput.value, 10)
+    const seconds = Number.parseInt(countdownInput.value, 10)
 
-    if (Number.isFinite(minutes) && minutes > 0) {
-      onCountdownSecondsChange(minutes * 60)
+    if (Number.isFinite(seconds) && seconds > 0) {
+      onCountdownSecondsChange(seconds)
     }
   })
   countdownRow.appendChild(countdownInput)
 
   const countdownUnit = document.createElement("span")
-  countdownUnit.textContent = "min"
+  countdownUnit.textContent = "sec"
   countdownRow.appendChild(countdownUnit)
 
   const timerControls = document.createElement("div")
@@ -617,7 +617,7 @@ export function createShapeSelector({
     timerLabel.textContent = state.timerText
     timerPanel.classList.toggle("is-running", state.timerRunning)
     timerStartStopButton.textContent = state.timerRunning ? "Stop" : "Start"
-    countdownInput.value = String(Math.max(1, Math.ceil(state.countdownSeconds / 60)))
+    countdownInput.value = String(Math.max(1, state.countdownSeconds))
     countdownRow.classList.toggle("is-disabled", state.timerMode !== "down")
     countdownInput.disabled = state.timerMode !== "down" || state.timerRunning
 

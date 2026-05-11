@@ -636,7 +636,7 @@ function setTimerMode(mode: TimerMode) {
 }
 
 function setCountdownSeconds(seconds: number) {
-  countdownSeconds = clamp(seconds, 1, 999 * 60)
+  countdownSeconds = clamp(seconds, 1, 9999)
   resetTimer()
 }
 
