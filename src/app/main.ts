@@ -425,7 +425,7 @@ function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {
     return
   }
 
-  const candidateOrigin = getFirstPreviewOrigin([
+  const candidateOrigin = getFirstPlaceablePreviewOrigin([
     ...getPlacedShapePointerHits(event),
     ...hits,
   ])
@@ -1141,11 +1141,25 @@ function getSelectedPlacedShape(): PlacedShapeRecord | null {
   return placedShapes.find((shape) => shape.id === selectedPlacedShapeId) ?? null
 }
 
-function getFirstPreviewOrigin(hits: GridPointerHit[]): GridPos | null {
+function getFirstPlaceablePreviewOrigin(hits: GridPointerHit[]): GridPos | null {
+  const seenOrigins = new Set<string>()
+
   for (const hit of hits) {
     const origin = getPreviewOrigin(hit)
 
-    if (origin) {
+    if (!origin) {
+      continue
+    }
+
+    const originKey = gridPosKey(origin)
+
+    if (seenOrigins.has(originKey)) {
+      continue
+    }
+
+    seenOrigins.add(originKey)
+
+    if (isPreviewOriginPlaceable(origin)) {
       return origin
     }
   }
@@ -1164,17 +1178,15 @@ function getPreviewOrigin(hit: GridPointerHit): GridPos | null {
     return null
   }
 
-  const origin = {
-    x: hit.gridPos.x + hit.normal.x,
-    y: isFloorColumnHit(hit) ? 0 : hit.gridPos.y + hit.normal.y,
-    z: hit.gridPos.z + hit.normal.z,
+  if (hit.kind === "floor" || hit.kind === "grid") {
+    return { ...hit.gridPos }
   }
 
-  return origin
-}
-
-function isFloorColumnHit(hit: GridPointerHit): boolean {
-  return hit.normal.x === 0 && hit.normal.y === 0 && hit.normal.z === 0
+  return {
+    x: hit.gridPos.x + hit.normal.x,
+    y: hit.gridPos.y + hit.normal.y,
+    z: hit.gridPos.z + hit.normal.z,
+  }
 }
 
 function isPreviewOriginPlaceable(origin: GridPos): boolean {
@@ -1269,7 +1281,7 @@ createGridPointerController({
       return
     }
 
-    const candidateOrigin = getFirstPreviewOrigin([
+    const candidateOrigin = getFirstPlaceablePreviewOrigin([
       ...getPlacedShapePointerHits(event),
       ...hits,
     ])
@@ -1320,7 +1332,7 @@ function createPlacedShapeSelectionController() {
 
     pointerDownPos = null
 
-    const placedSurfaceOrigin = getFirstPreviewOrigin(getPlacedShapePointerHits(event))
+    const placedSurfaceOrigin = getFirstPlaceablePreviewOrigin(getPlacedShapePointerHits(event))
 
     if (placedSurfaceOrigin && isPreviewOriginPlaceable(placedSurfaceOrigin)) {
       return
@@ -1379,6 +1391,7 @@ function getPlacedShapePointerHits(event: PointerEvent | undefined): GridPointer
         y: Math.round(normal.y),
         z: Math.round(normal.z),
       },
+      kind: "surface",
     }]
   })
 }
