@@ -26,6 +26,10 @@ import {
   isShapeInsideGrid,
   isShapeSupported,
 } from "../core/puzzle/shapePlacement"
+import {
+  createPuzzleExport,
+  stringifyPuzzleExport,
+} from "../core/puzzle/PuzzleExport"
 import { gridPosKey, type GridPos } from "../core/grid/GridPos"
 import type { PlacedShape } from "../core/puzzle/PlacedShape"
 
@@ -232,6 +236,17 @@ function editSelectedPlacedShape() {
   renderSelectedShape()
 }
 
+function exportPuzzle(): string {
+  return stringifyPuzzleExport(createPuzzleExport(
+    DEFAULT_GRID_BOUNDS,
+    placedShapes.map((shape) => ({
+      shapeId: shape.shapeId,
+      origin: shape.origin,
+      rotation: shape.rotation,
+    })),
+  ))
+}
+
 function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {
   const candidateOrigin = getFirstPreviewOrigin([
     ...getPlacedShapePointerHits(event),
@@ -422,6 +437,7 @@ const shapeSelector = createShapeSelector({
   onPlaceShape: placeSelectedShape,
   onDeletePlacedShape: deleteSelectedPlacedShape,
   onEditPlacedShape: editSelectedPlacedShape,
+  onExportPuzzle: exportPuzzle,
 })
 
 updatePositionControls = shapeSelector.setPosition

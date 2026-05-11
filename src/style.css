@@ -300,6 +300,35 @@ button {
   background: #eff6ff;
 }
 
+.export-controls {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(105, 114, 130, 0.24);
+}
+
+.export-button {
+  justify-self: start;
+}
+
+.export-output {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border: 1px solid rgba(105, 114, 130, 0.28);
+  border-radius: 6px;
+  padding: 8px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.72);
+  font: 11px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.export-output:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 @media (max-width: 560px) {
   .shape-selector {
     top: 10px;

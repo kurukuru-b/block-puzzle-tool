@@ -20,6 +20,7 @@ type CreateShapeSelectorParams = {
   onPlaceShape: () => boolean
   onDeletePlacedShape: () => void
   onEditPlacedShape: () => void
+  onExportPuzzle: () => string
 }
 
 type ShapeSelector = {
@@ -42,6 +43,7 @@ export function createShapeSelector({
   onPlaceShape,
   onDeletePlacedShape,
   onEditPlacedShape,
+  onExportPuzzle,
 }: CreateShapeSelectorParams): ShapeSelector {
   const panel = document.createElement("section")
   panel.className = "shape-selector"
@@ -199,6 +201,28 @@ export function createShapeSelector({
   const placedList = document.createElement("div")
   placedList.className = "placed-list"
   panel.appendChild(placedList)
+
+  const exportControls = document.createElement("div")
+  exportControls.className = "export-controls"
+  panel.appendChild(exportControls)
+
+  const exportButton = document.createElement("button")
+  exportButton.type = "button"
+  exportButton.className = "secondary-action-button export-button"
+  exportButton.textContent = "Export"
+  exportControls.appendChild(exportButton)
+
+  const exportOutput = document.createElement("textarea")
+  exportOutput.className = "export-output"
+  exportOutput.readOnly = true
+  exportOutput.spellcheck = false
+  exportControls.appendChild(exportOutput)
+
+  exportButton.addEventListener("click", () => {
+    exportOutput.value = onExportPuzzle()
+    exportOutput.focus()
+    exportOutput.select()
+  })
 
   setPosition(initialPosition)
   setPlacedShapes([])
