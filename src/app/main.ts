@@ -684,6 +684,57 @@ async function renameSelectedViewerProblem(title: string): Promise<{ ok: boolean
   }
 }
 
+async function moveSelectedViewerProblemDifficulty(
+  difficulty: PuzzleDifficulty,
+): Promise<{ ok: boolean, message: string }> {
+  if (difficulty === viewerDifficulty) {
+    return {
+      ok: false,
+      message: "同じ難易度が選択されています。",
+    }
+  }
+
+  const library = loadPuzzleLibrary()
+  const currentPuzzles = library[viewerDifficulty]
+  const puzzle = currentPuzzles[viewerProblemIndex]
+
+  if (!puzzle) {
+    return {
+      ok: false,
+      message: "移動する問題がありません。",
+    }
+  }
+
+  currentPuzzles.splice(viewerProblemIndex, 1)
+  const movedPuzzle: StoredPuzzle = {
+    ...puzzle,
+    difficulty,
+  }
+
+  library[difficulty].push(movedPuzzle)
+  viewerDifficulty = difficulty
+  viewerProblemIndex = library[difficulty].length - 1
+  savePuzzleLibrary(library)
+  loadSelectedViewerPuzzle()
+  refreshViewerState()
+
+  const dbResult = await puzzleLibraryStore.movePuzzle(movedPuzzle.id, difficulty)
+
+  if (!dbResult.ok) {
+    return {
+      ok: false,
+      message: `Moved locally. DB sync failed: ${dbResult.message}`,
+    }
+  }
+
+  return {
+    ok: true,
+    message: puzzleLibraryStore.isRemoteConfigured()
+      ? `Moved to ${formatDifficulty(difficulty)} in DB`
+      : `Moved to ${formatDifficulty(difficulty)} locally`,
+  }
+}
+
 async function deleteSelectedViewerProblem(): Promise<{ ok: boolean, message: string }> {
   const library = loadPuzzleLibrary()
   const puzzles = library[viewerDifficulty]
@@ -1244,6 +1295,7 @@ const shapeSelector = createShapeSelector({
   onRandomProblem: selectRandomViewerProblem,
   onSelectProblem: selectViewerProblem,
   onRenameProblem: renameSelectedViewerProblem,
+  onMoveProblemDifficulty: moveSelectedViewerProblemDifficulty,
   onDeleteProblem: deleteSelectedViewerProblem,
   onToggleColor: toggleViewerColor,
   onTimerStartStop: startStopTimer,

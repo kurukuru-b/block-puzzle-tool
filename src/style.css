@@ -196,6 +196,10 @@ button {
   align-items: center;
 }
 
+.problem-management .danger-action-button {
+  grid-column: 1 / -1;
+}
+
 .problem-label,
 .problem-title,
 .problem-status,
@@ -276,6 +280,7 @@ button {
 }
 
 .problem-title-input {
+  grid-column: 1 / -1;
   min-width: 0;
   height: 34px;
   border: 1px solid rgba(105, 114, 130, 0.28);
@@ -287,7 +292,20 @@ button {
   font-weight: 700;
 }
 
-.problem-title-input:focus-visible {
+.problem-difficulty-select {
+  min-width: 0;
+  height: 34px;
+  border: 1px solid rgba(105, 114, 130, 0.28);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.problem-title-input:focus-visible,
+.problem-difficulty-select:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
@@ -361,7 +379,8 @@ button {
 }
 
 .secondary-action-button:disabled,
-.problem-title-input:disabled {
+.problem-title-input:disabled,
+.problem-difficulty-select:disabled {
   border-color: rgba(105, 114, 130, 0.16);
   color: #9ca3af;
   background: rgba(229, 231, 235, 0.46);

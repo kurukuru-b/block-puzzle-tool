@@ -46,6 +46,7 @@ export function createPuzzleLibraryStore() {
     syncFromRemote,
     upsertPuzzle,
     renamePuzzle,
+    movePuzzle,
     deletePuzzle,
   }
 
@@ -153,6 +154,26 @@ export function createPuzzleLibraryStore() {
       },
       body: JSON.stringify({
         title,
+        updated_at: new Date().toISOString(),
+      }),
+    })
+  }
+
+  async function movePuzzle(id: string, difficulty: PuzzleDifficulty): Promise<StoreResult> {
+    if (!isRemoteConfigured()) {
+      return {
+        ok: true,
+        message: "Moved locally.",
+      }
+    }
+
+    return request<void>(`${getRestUrl()}?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: {
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        difficulty,
         updated_at: new Date().toISOString(),
       }),
     })

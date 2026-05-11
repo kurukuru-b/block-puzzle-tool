@@ -55,6 +55,7 @@ type CreateShapeSelectorParams = {
   onRandomProblem: () => void
   onSelectProblem: (puzzleId: string) => void
   onRenameProblem: (title: string) => MaybePromise<ImportPuzzleResult>
+  onMoveProblemDifficulty: (difficulty: PuzzleDifficulty) => MaybePromise<ImportPuzzleResult>
   onDeleteProblem: () => MaybePromise<ImportPuzzleResult>
   onToggleColor: () => void
   onTimerStartStop: () => void
@@ -98,6 +99,7 @@ export function createShapeSelector({
   onRandomProblem,
   onSelectProblem,
   onRenameProblem,
+  onMoveProblemDifficulty,
   onDeleteProblem,
   onToggleColor,
   onTimerStartStop,
@@ -124,6 +126,7 @@ export function createShapeSelector({
   const viewerPanel = document.createElement("section")
   viewerPanel.className = "shape-selector viewer-panel"
   root.appendChild(viewerPanel)
+  let latestViewerState = initialViewerState
 
   const title = document.createElement("h1")
   title.textContent = "Block Puzzle Tool"
@@ -371,6 +374,31 @@ export function createShapeSelector({
     problemStatus.classList.toggle("is-error", !result.ok)
   })
   problemManagement.appendChild(renameProblemButton)
+
+  const moveDifficultySelect = document.createElement("select")
+  moveDifficultySelect.className = "problem-difficulty-select"
+  moveDifficultySelect.setAttribute("aria-label", "Move problem difficulty")
+  moveDifficultySelect.addEventListener("change", updateMoveProblemButtonState)
+  problemManagement.appendChild(moveDifficultySelect)
+
+  for (const difficulty of ["easy", "normal", "hard", "challenge"] satisfies PuzzleDifficulty[]) {
+    const option = document.createElement("option")
+    option.value = difficulty
+    option.textContent = formatDifficulty(difficulty)
+    moveDifficultySelect.appendChild(option)
+  }
+
+  const moveProblemButton = document.createElement("button")
+  moveProblemButton.type = "button"
+  moveProblemButton.className = "secondary-action-button"
+  moveProblemButton.textContent = "Move"
+  moveProblemButton.addEventListener("click", async () => {
+    const result = await onMoveProblemDifficulty(moveDifficultySelect.value as PuzzleDifficulty)
+
+    problemStatus.textContent = result.message
+    problemStatus.classList.toggle("is-error", !result.ok)
+  })
+  problemManagement.appendChild(moveProblemButton)
 
   const deleteProblemButton = document.createElement("button")
   deleteProblemButton.type = "button"
@@ -666,6 +694,8 @@ export function createShapeSelector({
   }
 
   function setViewerState(state: ViewerPanelState) {
+    latestViewerState = state
+
     for (const [difficulty, button] of difficultyButtons) {
       const isSelected = difficulty === state.difficulty
       button.classList.toggle("is-selected", isSelected)
@@ -687,6 +717,13 @@ export function createShapeSelector({
       problemTitleInput.value = state.selectedPuzzleId ? state.problemTitle : ""
     }
 
+    if (document.activeElement !== moveDifficultySelect) {
+      moveDifficultySelect.value = state.difficulty
+    }
+
+    moveDifficultySelect.disabled = state.selectedPuzzleId === null
+    updateMoveProblemButtonState()
+
     rebuildProblemList(state)
 
     colorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
@@ -705,6 +742,11 @@ export function createShapeSelector({
     }
 
     registerButton.textContent = "Register"
+  }
+
+  function updateMoveProblemButtonState() {
+    moveProblemButton.disabled = latestViewerState.selectedPuzzleId === null ||
+      moveDifficultySelect.value === latestViewerState.difficulty
   }
 
   function rebuildProblemList(state: ViewerPanelState) {
