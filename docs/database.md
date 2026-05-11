@@ -23,6 +23,8 @@ Add these repository variables in GitHub:
 
 `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`
 
+If you instead add them as `Environment variables`, use the `github-pages` environment.
+
 ```env
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-or-publishable-key
