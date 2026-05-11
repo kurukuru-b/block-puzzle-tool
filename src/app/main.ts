@@ -60,7 +60,7 @@ type StoredPuzzle = PuzzleExport & {
 }
 
 type PuzzleLibrary = Record<PuzzleDifficulty, StoredPuzzle[]>
-type StoredPuzzleLibrary = Partial<Record<PuzzleDifficulty | "expert", StoredPuzzle[]>>
+type StoredPuzzleLibrary = Partial<Record<PuzzleDifficulty, StoredPuzzle[]>>
 
 let activeShapeGroup: THREE.Group | null = null
 let appMode: AppMode = "editor"
@@ -644,13 +644,7 @@ function loadPuzzleLibrary(): PuzzleLibrary {
       easy: Array.isArray(parsed.easy) ? parsed.easy : [],
       normal: Array.isArray(parsed.normal) ? parsed.normal : [],
       hard: Array.isArray(parsed.hard) ? parsed.hard : [],
-      challenge: [
-        ...(Array.isArray(parsed.challenge) ? parsed.challenge : []),
-        ...(Array.isArray(parsed.expert) ? parsed.expert.map((puzzle) => ({
-          ...puzzle,
-          difficulty: "challenge" as const,
-        })) : []),
-      ],
+      challenge: Array.isArray(parsed.challenge) ? parsed.challenge : [],
     }
   } catch {
     return emptyLibrary

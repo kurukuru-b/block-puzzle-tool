@@ -275,7 +275,7 @@ export function createShapeSelector({
     const button = document.createElement("button")
     button.type = "button"
     button.className = "secondary-action-button difficulty-button"
-    button.textContent = difficulty
+    button.textContent = formatDifficulty(difficulty)
     button.addEventListener("click", () => onSelectDifficulty(difficulty))
     difficultyControls.appendChild(button)
     difficultyButtons.set(difficulty, button)
@@ -347,6 +347,12 @@ export function createShapeSelector({
   dataActions.className = "data-actions"
   dataControls.appendChild(dataActions)
 
+  const importButton = document.createElement("button")
+  importButton.type = "button"
+  importButton.className = "secondary-action-button export-button"
+  importButton.textContent = "Import"
+  dataActions.appendChild(importButton)
+
   const exportButton = document.createElement("button")
   exportButton.type = "button"
   exportButton.className = "secondary-action-button export-button"
@@ -359,17 +365,15 @@ export function createShapeSelector({
   copyButton.textContent = "Copy"
   dataActions.appendChild(copyButton)
 
-  const importButton = document.createElement("button")
-  importButton.type = "button"
-  importButton.className = "secondary-action-button export-button"
-  importButton.textContent = "Import"
-  dataActions.appendChild(importButton)
-
   const registerButton = document.createElement("button")
   registerButton.type = "button"
   registerButton.className = "secondary-action-button export-button"
   registerButton.textContent = "Register"
   dataActions.appendChild(registerButton)
+
+  const registerTarget = document.createElement("span")
+  registerTarget.className = "register-target"
+  dataControls.appendChild(registerTarget)
 
   const dataText = document.createElement("textarea")
   dataText.className = "export-output"
@@ -521,6 +525,12 @@ export function createShapeSelector({
     colorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
     colorButton.classList.toggle("is-selected", state.colorEnabled)
     timerLabel.textContent = state.timerText
+    registerButton.textContent = `Register to ${formatDifficulty(state.difficulty)}`
+    registerTarget.textContent = `Register target: ${formatDifficulty(state.difficulty)}`
+  }
+
+  function formatDifficulty(difficulty: PuzzleDifficulty): string {
+    return difficulty[0].toUpperCase() + difficulty.slice(1)
   }
 
   function setSelectedPlacedShape(id: string | null) {
