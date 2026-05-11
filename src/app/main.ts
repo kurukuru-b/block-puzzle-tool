@@ -28,6 +28,8 @@ import {
 } from "../core/puzzle/shapePlacement"
 import {
   createPuzzleExport,
+  parsePuzzleExport,
+  type PuzzleExport,
   stringifyPuzzleExport,
 } from "../core/puzzle/PuzzleExport"
 import { gridPosKey, type GridPos } from "../core/grid/GridPos"
@@ -154,33 +156,11 @@ function placeSelectedShape(): boolean {
     return false
   }
 
-  const placedShapeId = `${selectedShapeId}-${nextPlacedShapeId}`
-  nextPlacedShapeId += 1
-
-  const placedGroup = createShapeMeshGroup({
-    ...shape,
-    cells: rotatedCells,
-  })
-  const worldPos = gridToWorld(previewOrigin, DEFAULT_GRID_BOUNDS)
-
-  placedGroup.position.set(worldPos.x, worldPos.y, worldPos.z)
-  placedGroup.userData.placedShapeId = placedShapeId
-  placedGroup.traverse((object) => {
-    object.userData.placedShapeId = placedShapeId
-  })
-  mainScene.scene.add(placedGroup)
-
-  placedShapes.push({
-    id: placedShapeId,
+  addPlacedShape({
     shapeId: selectedShapeId,
     origin: { ...previewOrigin },
     rotation: { ...selectedRotation },
-    group: placedGroup,
   })
-
-  for (const pos of getPlacedCellPositions(previewOrigin, rotatedCells)) {
-    occupiedCells.add(gridPosKey(pos))
-  }
 
   refreshPlacedShapeState()
   selectNextAvailableShape()
@@ -247,6 +227,36 @@ function exportPuzzle(): string {
   ))
 }
 
+function importPuzzle(source: string): { ok: boolean, message: string } {
+  try {
+    const puzzle = parsePuzzleExport(source)
+
+    validateImportPuzzle(puzzle)
+    clearPlacedShapes()
+
+    for (const placedShape of puzzle.placedShapes) {
+      addPlacedShape(placedShape)
+    }
+
+    selectedPlacedShapeId = null
+    selectNextAvailableShape()
+    updateSelectedPlacedShape?.(selectedPlacedShapeId)
+    updateSelectedShapeControl?.(selectedShapeId)
+    refreshPlacedShapeState()
+    renderSelectedShape()
+
+    return {
+      ok: true,
+      message: `Imported ${puzzle.placedShapes.length} shapes`,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "importに失敗しました。",
+    }
+  }
+}
+
 function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {
   const candidateOrigin = getFirstPreviewOrigin([
     ...getPlacedShapePointerHits(event),
@@ -301,6 +311,53 @@ function removePlacedShape(placedShapeId: string) {
   rebuildOccupiedCells()
 }
 
+function addPlacedShape(placedShape: PlacedShape) {
+  const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)
+
+  if (!shape) {
+    throw new Error(`Shape not found: ${placedShape.shapeId}`)
+  }
+
+  const rotatedCells = rotateShapeCells(shape.cells, placedShape.rotation)
+  const placedShapeId = `${placedShape.shapeId}-${nextPlacedShapeId}`
+  nextPlacedShapeId += 1
+
+  const placedGroup = createShapeMeshGroup({
+    ...shape,
+    cells: rotatedCells,
+  })
+  const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
+
+  placedGroup.position.set(worldPos.x, worldPos.y, worldPos.z)
+  placedGroup.userData.placedShapeId = placedShapeId
+  placedGroup.traverse((object) => {
+    object.userData.placedShapeId = placedShapeId
+  })
+  mainScene.scene.add(placedGroup)
+
+  placedShapes.push({
+    id: placedShapeId,
+    shapeId: placedShape.shapeId,
+    origin: { ...placedShape.origin },
+    rotation: { ...placedShape.rotation },
+    group: placedGroup,
+  })
+
+  for (const pos of getPlacedCellPositions(placedShape.origin, rotatedCells)) {
+    occupiedCells.add(gridPosKey(pos))
+  }
+}
+
+function clearPlacedShapes() {
+  for (const placedShape of placedShapes) {
+    mainScene.scene.remove(placedShape.group)
+  }
+
+  placedShapes.length = 0
+  occupiedCells.clear()
+  selectedPlacedShapeId = null
+}
+
 function refreshPlacedShapeState() {
   updatePlacedShapes?.(placedShapes.map((shape) => ({
     id: shape.id,
@@ -348,6 +405,47 @@ function selectNextAvailableShape() {
   selectedShapeId = nextShape.id
   selectedRotation = { x: 0, y: 0, z: 0 }
   updateSelectedShapeControl?.(selectedShapeId)
+}
+
+function validateImportPuzzle(puzzle: PuzzleExport) {
+  if (
+    puzzle.grid.width !== DEFAULT_GRID_BOUNDS.width ||
+    puzzle.grid.height !== DEFAULT_GRID_BOUNDS.height ||
+    puzzle.grid.depth !== DEFAULT_GRID_BOUNDS.depth
+  ) {
+    throw new Error("このエディタでは5x5x5のデータだけimportできます。")
+  }
+
+  const importedShapeIds = new Set<string>()
+  const importedCells = new Set<string>()
+
+  for (const placedShape of puzzle.placedShapes) {
+    const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)
+
+    if (!shape) {
+      throw new Error(`未定義のshapeIdです: ${placedShape.shapeId}`)
+    }
+
+    if (importedShapeIds.has(placedShape.shapeId)) {
+      throw new Error(`同じshapeIdが複数含まれています: ${placedShape.shapeId}`)
+    }
+
+    importedShapeIds.add(placedShape.shapeId)
+
+    const rotatedCells = rotateShapeCells(shape.cells, placedShape.rotation)
+
+    if (!isShapeInsideGrid(placedShape.origin, rotatedCells, DEFAULT_GRID_BOUNDS)) {
+      throw new Error(`枠外に出ているshapeがあります: ${placedShape.shapeId}`)
+    }
+
+    if (hasOverlappingCells(placedShape.origin, rotatedCells, importedCells)) {
+      throw new Error(`セルが重なっているshapeがあります: ${placedShape.shapeId}`)
+    }
+
+    for (const pos of getPlacedCellPositions(placedShape.origin, rotatedCells)) {
+      importedCells.add(gridPosKey(pos))
+    }
+  }
 }
 
 function getFirstPreviewOrigin(hits: GridPointerHit[]): GridPos | null {
@@ -438,6 +536,7 @@ const shapeSelector = createShapeSelector({
   onDeletePlacedShape: deleteSelectedPlacedShape,
   onEditPlacedShape: editSelectedPlacedShape,
   onExportPuzzle: exportPuzzle,
+  onImportPuzzle: importPuzzle,
 })
 
 updatePositionControls = shapeSelector.setPosition

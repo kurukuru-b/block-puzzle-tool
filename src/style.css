@@ -308,6 +308,12 @@ button {
   border-top: 1px solid rgba(105, 114, 130, 0.24);
 }
 
+.data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .export-button {
   justify-self: start;
 }
@@ -327,6 +333,17 @@ button {
 .export-output:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
+}
+
+.import-status {
+  min-height: 16px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.import-status.is-error {
+  color: #b91c1c;
 }
 
 @media (max-width: 560px) {

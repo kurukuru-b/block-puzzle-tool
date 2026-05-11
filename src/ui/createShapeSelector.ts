@@ -9,6 +9,11 @@ export type PlacedShapeSummary = {
   shapeId: string
 }
 
+export type ImportPuzzleResult = {
+  ok: boolean
+  message: string
+}
+
 type CreateShapeSelectorParams = {
   shapes: ShapeDefinition[]
   selectedShapeId: string
@@ -21,6 +26,7 @@ type CreateShapeSelectorParams = {
   onDeletePlacedShape: () => void
   onEditPlacedShape: () => void
   onExportPuzzle: () => string
+  onImportPuzzle: (source: string) => ImportPuzzleResult
 }
 
 type ShapeSelector = {
@@ -44,6 +50,7 @@ export function createShapeSelector({
   onDeletePlacedShape,
   onEditPlacedShape,
   onExportPuzzle,
+  onImportPuzzle,
 }: CreateShapeSelectorParams): ShapeSelector {
   const panel = document.createElement("section")
   panel.className = "shape-selector"
@@ -202,26 +209,49 @@ export function createShapeSelector({
   placedList.className = "placed-list"
   panel.appendChild(placedList)
 
-  const exportControls = document.createElement("div")
-  exportControls.className = "export-controls"
-  panel.appendChild(exportControls)
+  const dataControls = document.createElement("div")
+  dataControls.className = "export-controls"
+  panel.appendChild(dataControls)
+
+  const dataActions = document.createElement("div")
+  dataActions.className = "data-actions"
+  dataControls.appendChild(dataActions)
 
   const exportButton = document.createElement("button")
   exportButton.type = "button"
   exportButton.className = "secondary-action-button export-button"
   exportButton.textContent = "Export"
-  exportControls.appendChild(exportButton)
+  dataActions.appendChild(exportButton)
 
-  const exportOutput = document.createElement("textarea")
-  exportOutput.className = "export-output"
-  exportOutput.readOnly = true
-  exportOutput.spellcheck = false
-  exportControls.appendChild(exportOutput)
+  const importButton = document.createElement("button")
+  importButton.type = "button"
+  importButton.className = "secondary-action-button export-button"
+  importButton.textContent = "Import"
+  dataActions.appendChild(importButton)
+
+  const dataText = document.createElement("textarea")
+  dataText.className = "export-output"
+  dataText.spellcheck = false
+  dataText.placeholder = "Exported puzzle JSON"
+  dataControls.appendChild(dataText)
+
+  const importStatus = document.createElement("span")
+  importStatus.className = "import-status"
+  dataControls.appendChild(importStatus)
 
   exportButton.addEventListener("click", () => {
-    exportOutput.value = onExportPuzzle()
-    exportOutput.focus()
-    exportOutput.select()
+    dataText.value = onExportPuzzle()
+    importStatus.textContent = "Exported"
+    importStatus.classList.remove("is-error")
+    dataText.focus()
+    dataText.select()
+  })
+
+  importButton.addEventListener("click", () => {
+    const result = onImportPuzzle(dataText.value)
+
+    importStatus.textContent = result.message
+    importStatus.classList.toggle("is-error", !result.ok)
   })
 
   setPosition(initialPosition)
