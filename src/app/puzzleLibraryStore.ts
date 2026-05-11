@@ -205,7 +205,9 @@ export function createPuzzleLibraryStore() {
         }
       }
 
-      if (response.status === 204) {
+      const body = await response.text()
+
+      if (!body) {
         return {
           ok: true,
           message: "DB sync complete.",
@@ -216,7 +218,7 @@ export function createPuzzleLibraryStore() {
       return {
         ok: true,
         message: "DB sync complete.",
-        data: await response.json() as T,
+        data: JSON.parse(body) as T,
       }
     } catch (error) {
       return {
