@@ -160,7 +160,8 @@ button {
 }
 
 .problem-controls,
-.viewer-actions {
+.viewer-actions,
+.timer-panel {
   display: grid;
   gap: 8px;
   margin-top: 12px;
@@ -174,7 +175,7 @@ button {
 }
 
 .viewer-actions {
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   align-items: center;
 }
 
@@ -188,6 +189,52 @@ button {
   color: #374151;
   font-size: 12px;
   font-weight: 800;
+}
+
+.timer-label {
+  min-height: 58px;
+  border: 1px solid rgba(105, 114, 130, 0.22);
+  border-radius: 6px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.62);
+  font: 800 32px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.timer-panel.is-running .timer-label {
+  border-color: rgba(37, 99, 235, 0.36);
+  background: #eff6ff;
+}
+
+.timer-mode-controls,
+.timer-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.countdown-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.countdown-row.is-disabled {
+  opacity: 0.52;
+}
+
+.countdown-input {
+  min-width: 0;
+  height: 34px;
+  border: 1px solid rgba(105, 114, 130, 0.28);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.72);
+  font: 700 13px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
 .problem-title {
@@ -410,12 +457,14 @@ button {
   margin-top: 12px;
 }
 
-.register-target {
-  display: block;
-  min-height: 18px;
-  color: #4b5563;
-  font-size: 12px;
-  font-weight: 800;
+.register-choices {
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.register-choices.is-visible {
+  display: grid;
 }
 
 .export-button {

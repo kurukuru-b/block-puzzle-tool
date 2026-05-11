@@ -25,7 +25,12 @@ export type ViewerPanelState = {
   problemTitle: string
   colorEnabled: boolean
   timerText: string
+  timerMode: TimerMode
+  timerRunning: boolean
+  countdownSeconds: number
 }
+
+export type TimerMode = "up" | "down"
 
 type CreateShapeSelectorParams = {
   shapes: ShapeDefinition[]
@@ -40,6 +45,10 @@ type CreateShapeSelectorParams = {
   onSelectDifficulty: (difficulty: PuzzleDifficulty) => void
   onMoveProblem: (amount: number) => void
   onToggleColor: () => void
+  onTimerStartStop: () => void
+  onTimerReset: () => void
+  onTimerModeChange: (mode: TimerMode) => void
+  onCountdownSecondsChange: (seconds: number) => void
   onRotate: (axis: RotationAxis) => void
   onResetRotation: () => void
   onMovePosition: (axis: GridAxis, amount: number) => GridPos
@@ -48,7 +57,7 @@ type CreateShapeSelectorParams = {
   onEditPlacedShape: () => void
   onExportPuzzle: () => string
   onImportPuzzle: (source: string) => ImportPuzzleResult
-  onRegisterPuzzle: () => ImportPuzzleResult
+  onRegisterPuzzle: (difficulty: PuzzleDifficulty) => ImportPuzzleResult
 }
 
 type ShapeSelector = {
@@ -75,6 +84,10 @@ export function createShapeSelector({
   onSelectDifficulty,
   onMoveProblem,
   onToggleColor,
+  onTimerStartStop,
+  onTimerReset,
+  onTimerModeChange,
+  onCountdownSecondsChange,
   onRotate,
   onResetRotation,
   onMovePosition,
@@ -319,9 +332,72 @@ export function createShapeSelector({
   colorButton.addEventListener("click", onToggleColor)
   viewerActions.appendChild(colorButton)
 
+  const timerPanel = document.createElement("div")
+  timerPanel.className = "timer-panel"
+  viewerPanel.appendChild(timerPanel)
+
   const timerLabel = document.createElement("span")
   timerLabel.className = "timer-label"
-  viewerActions.appendChild(timerLabel)
+  timerPanel.appendChild(timerLabel)
+
+  const timerModeControls = document.createElement("div")
+  timerModeControls.className = "timer-mode-controls"
+  timerPanel.appendChild(timerModeControls)
+  const timerModeButtons = new Map<TimerMode, HTMLButtonElement>()
+
+  for (const mode of ["up", "down"] satisfies TimerMode[]) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "secondary-action-button timer-mode-button"
+    button.textContent = mode === "up" ? "Up" : "Down"
+    button.addEventListener("click", () => onTimerModeChange(mode))
+    timerModeControls.appendChild(button)
+    timerModeButtons.set(mode, button)
+  }
+
+  const countdownRow = document.createElement("label")
+  countdownRow.className = "countdown-row"
+  timerPanel.appendChild(countdownRow)
+
+  const countdownLabel = document.createElement("span")
+  countdownLabel.textContent = "Countdown"
+  countdownRow.appendChild(countdownLabel)
+
+  const countdownInput = document.createElement("input")
+  countdownInput.type = "number"
+  countdownInput.min = "1"
+  countdownInput.max = "999"
+  countdownInput.step = "1"
+  countdownInput.className = "countdown-input"
+  countdownInput.addEventListener("change", () => {
+    const minutes = Number.parseInt(countdownInput.value, 10)
+
+    if (Number.isFinite(minutes) && minutes > 0) {
+      onCountdownSecondsChange(minutes * 60)
+    }
+  })
+  countdownRow.appendChild(countdownInput)
+
+  const countdownUnit = document.createElement("span")
+  countdownUnit.textContent = "min"
+  countdownRow.appendChild(countdownUnit)
+
+  const timerControls = document.createElement("div")
+  timerControls.className = "timer-controls"
+  timerPanel.appendChild(timerControls)
+
+  const timerStartStopButton = document.createElement("button")
+  timerStartStopButton.type = "button"
+  timerStartStopButton.className = "secondary-action-button timer-action-button"
+  timerStartStopButton.addEventListener("click", onTimerStartStop)
+  timerControls.appendChild(timerStartStopButton)
+
+  const timerResetButton = document.createElement("button")
+  timerResetButton.type = "button"
+  timerResetButton.className = "secondary-action-button timer-action-button"
+  timerResetButton.textContent = "Reset"
+  timerResetButton.addEventListener("click", onTimerReset)
+  timerControls.appendChild(timerResetButton)
 
   const dataControls = document.createElement("section")
   dataControls.className = "export-controls data-panel"
@@ -371,9 +447,24 @@ export function createShapeSelector({
   registerButton.textContent = "Register"
   dataActions.appendChild(registerButton)
 
-  const registerTarget = document.createElement("span")
-  registerTarget.className = "register-target"
-  dataControls.appendChild(registerTarget)
+  const registerChoices = document.createElement("div")
+  registerChoices.className = "register-choices"
+  dataControls.appendChild(registerChoices)
+
+  for (const difficulty of ["easy", "normal", "hard", "challenge"] satisfies PuzzleDifficulty[]) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "secondary-action-button register-choice-button"
+    button.textContent = formatDifficulty(difficulty)
+    button.addEventListener("click", () => {
+      const result = onRegisterPuzzle(difficulty)
+
+      importStatus.textContent = result.message
+      importStatus.classList.toggle("is-error", !result.ok)
+      registerChoices.classList.remove("is-visible")
+    })
+    registerChoices.appendChild(button)
+  }
 
   const dataText = document.createElement("textarea")
   dataText.className = "export-output"
@@ -436,10 +527,9 @@ export function createShapeSelector({
   })
 
   registerButton.addEventListener("click", () => {
-    const result = onRegisterPuzzle()
-
-    importStatus.textContent = result.message
-    importStatus.classList.toggle("is-error", !result.ok)
+    registerChoices.classList.toggle("is-visible")
+    importStatus.textContent = "Choose a difficulty to register."
+    importStatus.classList.remove("is-error")
   })
 
   setMode(initialMode)
@@ -525,8 +615,19 @@ export function createShapeSelector({
     colorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
     colorButton.classList.toggle("is-selected", state.colorEnabled)
     timerLabel.textContent = state.timerText
-    registerButton.textContent = `Register to ${formatDifficulty(state.difficulty)}`
-    registerTarget.textContent = `Register target: ${formatDifficulty(state.difficulty)}`
+    timerPanel.classList.toggle("is-running", state.timerRunning)
+    timerStartStopButton.textContent = state.timerRunning ? "Stop" : "Start"
+    countdownInput.value = String(Math.max(1, Math.ceil(state.countdownSeconds / 60)))
+    countdownRow.classList.toggle("is-disabled", state.timerMode !== "down")
+    countdownInput.disabled = state.timerMode !== "down" || state.timerRunning
+
+    for (const [mode, button] of timerModeButtons) {
+      const isSelected = mode === state.timerMode
+      button.classList.toggle("is-selected", isSelected)
+      button.setAttribute("aria-pressed", String(isSelected))
+    }
+
+    registerButton.textContent = "Register"
   }
 
   function formatDifficulty(difficulty: PuzzleDifficulty): string {

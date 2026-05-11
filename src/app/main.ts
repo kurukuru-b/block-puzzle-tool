@@ -12,6 +12,7 @@ import {
   createShapeSelector,
   type PuzzleDifficulty,
   type PlacedShapeSummary,
+  type TimerMode,
   type ViewerPanelState,
 } from "../ui/createShapeSelector"
 import {
@@ -67,6 +68,11 @@ let appMode: AppMode = "editor"
 let viewerDifficulty: PuzzleDifficulty = "easy"
 let viewerProblemIndex = 0
 let viewerColorEnabled = true
+let timerMode: TimerMode = "up"
+let timerRunning = false
+let timerElapsedSeconds = 0
+let countdownSeconds = 300
+let timerIntervalId: number | null = null
 let selectedShapeId: string | null = null
 let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
 let previewOrigin: GridPos = { x: 0, y: 0, z: 0 }
@@ -357,7 +363,7 @@ function importPuzzle(source: string): { ok: boolean, message: string } {
   }
 }
 
-function registerPuzzle(): { ok: boolean, message: string } {
+function registerPuzzle(difficulty: PuzzleDifficulty): { ok: boolean, message: string } {
   try {
     if (placedShapes.length === 0) {
       throw new Error("登録できる配置がありません。")
@@ -376,22 +382,24 @@ function registerPuzzle(): { ok: boolean, message: string } {
     validateSupportedPuzzle(puzzle)
 
     const library = loadPuzzleLibrary()
-    const nextNumber = library[viewerDifficulty].length + 1
+    const nextNumber = library[difficulty].length + 1
 
-    library[viewerDifficulty].push({
+    library[difficulty].push({
       ...puzzle,
-      id: `${viewerDifficulty}-${Date.now()}`,
-      difficulty: viewerDifficulty,
-      title: `${viewerDifficulty} ${nextNumber}`,
+      id: `${difficulty}-${Date.now()}`,
+      difficulty,
+      title: `${formatDifficulty(difficulty)} ${nextNumber}`,
     })
 
     savePuzzleLibrary(library)
-    viewerProblemIndex = library[viewerDifficulty].length - 1
+    if (viewerDifficulty === difficulty) {
+      viewerProblemIndex = library[difficulty].length - 1
+    }
     refreshViewerState()
 
     return {
       ok: true,
-      message: `Registered ${viewerDifficulty} #${nextNumber}`,
+      message: `Registered ${formatDifficulty(difficulty)} #${nextNumber}`,
     }
   } catch (error) {
     return {
@@ -399,6 +407,10 @@ function registerPuzzle(): { ok: boolean, message: string } {
       message: error instanceof Error ? error.message : "登録に失敗しました。",
     }
   }
+}
+
+function formatDifficulty(difficulty: PuzzleDifficulty): string {
+  return difficulty[0].toUpperCase() + difficulty.slice(1)
 }
 
 function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {
@@ -591,6 +603,79 @@ function toggleViewerColor() {
   refreshViewerState()
 }
 
+function startStopTimer() {
+  if (timerRunning) {
+    stopTimer()
+    refreshViewerState()
+    return
+  }
+
+  timerRunning = true
+  timerIntervalId = window.setInterval(tickTimer, 1000)
+  refreshViewerState()
+}
+
+function stopTimer() {
+  timerRunning = false
+
+  if (timerIntervalId !== null) {
+    window.clearInterval(timerIntervalId)
+    timerIntervalId = null
+  }
+}
+
+function resetTimer() {
+  stopTimer()
+  timerElapsedSeconds = 0
+  refreshViewerState()
+}
+
+function setTimerMode(mode: TimerMode) {
+  timerMode = mode
+  resetTimer()
+}
+
+function setCountdownSeconds(seconds: number) {
+  countdownSeconds = clamp(seconds, 1, 999 * 60)
+  resetTimer()
+}
+
+function tickTimer() {
+  timerElapsedSeconds += 1
+
+  if (timerMode === "down" && timerElapsedSeconds >= countdownSeconds) {
+    timerElapsedSeconds = countdownSeconds
+    stopTimer()
+    playTimerDoneSound()
+  }
+
+  refreshViewerState()
+}
+
+function playTimerDoneSound() {
+  const AudioContextClass = window.AudioContext
+
+  if (!AudioContextClass) {
+    return
+  }
+
+  const audioContext = new AudioContextClass()
+  const oscillator = audioContext.createOscillator()
+  const gain = audioContext.createGain()
+
+  oscillator.type = "sine"
+  oscillator.frequency.setValueAtTime(880, audioContext.currentTime)
+  oscillator.frequency.setValueAtTime(660, audioContext.currentTime + 0.16)
+  gain.gain.setValueAtTime(0.0001, audioContext.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.18, audioContext.currentTime + 0.02)
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.45)
+
+  oscillator.connect(gain)
+  gain.connect(audioContext.destination)
+  oscillator.start()
+  oscillator.stop(audioContext.currentTime + 0.48)
+}
+
 function refreshViewerState() {
   updateViewerStateControl?.(getViewerPanelState())
 }
@@ -606,8 +691,26 @@ function getViewerPanelState(): ViewerPanelState {
     problemCount,
     problemTitle: problemCount === 0 ? "No registered puzzle" : puzzles[problemIndex].title,
     colorEnabled: viewerColorEnabled,
-    timerText: "00:00",
+    timerText: getTimerText(),
+    timerMode,
+    timerRunning,
+    countdownSeconds,
   }
+}
+
+function getTimerText(): string {
+  const seconds = timerMode === "down"
+    ? Math.max(0, countdownSeconds - timerElapsedSeconds)
+    : timerElapsedSeconds
+
+  return formatSeconds(seconds)
+}
+
+function formatSeconds(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
 }
 
 function loadSelectedViewerPuzzle() {
@@ -1024,6 +1127,10 @@ const shapeSelector = createShapeSelector({
   onSelectDifficulty: selectViewerDifficulty,
   onMoveProblem: moveViewerProblem,
   onToggleColor: toggleViewerColor,
+  onTimerStartStop: startStopTimer,
+  onTimerReset: resetTimer,
+  onTimerModeChange: setTimerMode,
+  onCountdownSecondsChange: setCountdownSeconds,
   onRotate: rotateSelectedShape,
   onResetRotation: resetSelectedRotation,
   onMovePosition: movePreviewOrigin,
