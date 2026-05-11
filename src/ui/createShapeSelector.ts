@@ -3,6 +3,7 @@ import type { RotationAxis } from "../core/shape/rotateShapeCells"
 import type { GridPos } from "../core/grid/GridPos"
 
 type GridAxis = "x" | "y" | "z"
+type MaybePromise<T> = T | Promise<T>
 
 export type AppMode = "editor" | "viewer"
 
@@ -52,8 +53,8 @@ type CreateShapeSelectorParams = {
   onSelectDifficulty: (difficulty: PuzzleDifficulty) => void
   onMoveProblem: (amount: number) => void
   onSelectProblem: (puzzleId: string) => void
-  onRenameProblem: (title: string) => ImportPuzzleResult
-  onDeleteProblem: () => ImportPuzzleResult
+  onRenameProblem: (title: string) => MaybePromise<ImportPuzzleResult>
+  onDeleteProblem: () => MaybePromise<ImportPuzzleResult>
   onToggleColor: () => void
   onTimerStartStop: () => void
   onTimerReset: () => void
@@ -67,7 +68,7 @@ type CreateShapeSelectorParams = {
   onEditPlacedShape: () => void
   onExportPuzzle: () => string
   onImportPuzzle: (source: string) => ImportPuzzleResult
-  onRegisterPuzzle: (difficulty: PuzzleDifficulty) => ImportPuzzleResult
+  onRegisterPuzzle: (difficulty: PuzzleDifficulty) => MaybePromise<ImportPuzzleResult>
 }
 
 type ShapeSelector = {
@@ -353,8 +354,8 @@ export function createShapeSelector({
   renameProblemButton.type = "button"
   renameProblemButton.className = "secondary-action-button"
   renameProblemButton.textContent = "Rename"
-  renameProblemButton.addEventListener("click", () => {
-    const result = onRenameProblem(problemTitleInput.value)
+  renameProblemButton.addEventListener("click", async () => {
+    const result = await onRenameProblem(problemTitleInput.value)
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
@@ -365,8 +366,8 @@ export function createShapeSelector({
   deleteProblemButton.type = "button"
   deleteProblemButton.className = "secondary-action-button danger-action-button"
   deleteProblemButton.textContent = "Delete"
-  deleteProblemButton.addEventListener("click", () => {
-    const result = onDeleteProblem()
+  deleteProblemButton.addEventListener("click", async () => {
+    const result = await onDeleteProblem()
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
@@ -511,8 +512,8 @@ export function createShapeSelector({
     button.type = "button"
     button.className = "secondary-action-button register-choice-button"
     button.textContent = formatDifficulty(difficulty)
-    button.addEventListener("click", () => {
-      const result = onRegisterPuzzle(difficulty)
+    button.addEventListener("click", async () => {
+      const result = await onRegisterPuzzle(difficulty)
 
       importStatus.textContent = result.message
       importStatus.classList.toggle("is-error", !result.ok)

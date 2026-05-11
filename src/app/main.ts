@@ -38,6 +38,11 @@ import {
 } from "../core/puzzle/PuzzleExport"
 import { gridPosKey, type GridPos } from "../core/grid/GridPos"
 import type { PlacedShape } from "../core/puzzle/PlacedShape"
+import {
+  createPuzzleLibraryStore,
+  type PuzzleLibrary,
+  type StoredPuzzle,
+} from "./puzzleLibraryStore"
 
 const mainScene = createMainScene()
 
@@ -52,17 +57,7 @@ type PlacedShapeRecord = PlacedShape & {
   group: THREE.Group
 }
 
-const PUZZLE_LIBRARY_STORAGE_KEY = "block-puzzle-tool:puzzle-library"
-
-type StoredPuzzle = PuzzleExport & {
-  id: string
-  difficulty: PuzzleDifficulty
-  title: string
-}
-
-type PuzzleLibrary = Record<PuzzleDifficulty, StoredPuzzle[]>
-type StoredPuzzleLibrary = Partial<Record<PuzzleDifficulty, StoredPuzzle[]>>
-
+const puzzleLibraryStore = createPuzzleLibraryStore()
 let activeShapeGroup: THREE.Group | null = null
 let appMode: AppMode = "editor"
 let viewerDifficulty: PuzzleDifficulty = "easy"
@@ -363,7 +358,7 @@ function importPuzzle(source: string): { ok: boolean, message: string } {
   }
 }
 
-function registerPuzzle(difficulty: PuzzleDifficulty): { ok: boolean, message: string } {
+async function registerPuzzle(difficulty: PuzzleDifficulty): Promise<{ ok: boolean, message: string }> {
   try {
     if (placedShapes.length === 0) {
       throw new Error("登録できる配置がありません。")
@@ -383,13 +378,14 @@ function registerPuzzle(difficulty: PuzzleDifficulty): { ok: boolean, message: s
 
     const library = loadPuzzleLibrary()
     const nextNumber = library[difficulty].length + 1
-
-    library[difficulty].push({
+    const storedPuzzle: StoredPuzzle = {
       ...puzzle,
       id: `${difficulty}-${Date.now()}`,
       difficulty,
       title: `${formatDifficulty(difficulty)} ${nextNumber}`,
-    })
+    }
+
+    library[difficulty].push(storedPuzzle)
 
     savePuzzleLibrary(library)
     if (viewerDifficulty === difficulty) {
@@ -397,9 +393,20 @@ function registerPuzzle(difficulty: PuzzleDifficulty): { ok: boolean, message: s
     }
     refreshViewerState()
 
+    const dbResult = await puzzleLibraryStore.upsertPuzzle(storedPuzzle)
+
+    if (!dbResult.ok) {
+      return {
+        ok: false,
+        message: `Registered locally. DB sync failed: ${dbResult.message}`,
+      }
+    }
+
     return {
       ok: true,
-      message: `Registered ${formatDifficulty(difficulty)} #${nextNumber}`,
+      message: puzzleLibraryStore.isRemoteConfigured()
+        ? `Registered ${formatDifficulty(difficulty)} #${nextNumber} to DB`
+        : `Registered ${formatDifficulty(difficulty)} #${nextNumber} locally`,
     }
   } catch (error) {
     return {
@@ -610,7 +617,7 @@ function selectViewerProblem(puzzleId: string) {
   refreshViewerState()
 }
 
-function renameSelectedViewerProblem(title: string): { ok: boolean, message: string } {
+async function renameSelectedViewerProblem(title: string): Promise<{ ok: boolean, message: string }> {
   const nextTitle = title.trim()
 
   if (!nextTitle) {
@@ -635,13 +642,22 @@ function renameSelectedViewerProblem(title: string): { ok: boolean, message: str
   savePuzzleLibrary(library)
   refreshViewerState()
 
+  const dbResult = await puzzleLibraryStore.renamePuzzle(puzzle.id, nextTitle)
+
+  if (!dbResult.ok) {
+    return {
+      ok: false,
+      message: `Renamed locally. DB sync failed: ${dbResult.message}`,
+    }
+  }
+
   return {
     ok: true,
-    message: "Renamed",
+    message: puzzleLibraryStore.isRemoteConfigured() ? "Renamed in DB" : "Renamed locally",
   }
 }
 
-function deleteSelectedViewerProblem(): { ok: boolean, message: string } {
+async function deleteSelectedViewerProblem(): Promise<{ ok: boolean, message: string }> {
   const library = loadPuzzleLibrary()
   const puzzles = library[viewerDifficulty]
   const puzzle = puzzles[viewerProblemIndex]
@@ -661,9 +677,20 @@ function deleteSelectedViewerProblem(): { ok: boolean, message: string } {
   loadSelectedViewerPuzzle()
   refreshViewerState()
 
+  const dbResult = await puzzleLibraryStore.deletePuzzle(puzzle.id)
+
+  if (!dbResult.ok) {
+    return {
+      ok: false,
+      message: `Deleted locally. DB sync failed: ${dbResult.message}`,
+    }
+  }
+
   return {
     ok: true,
-    message: `Deleted ${puzzle.title}`,
+    message: puzzleLibraryStore.isRemoteConfigured()
+      ? `Deleted ${puzzle.title} from DB`
+      : `Deleted ${puzzle.title} locally`,
   }
 }
 
@@ -809,38 +836,11 @@ function loadSelectedViewerPuzzle() {
 }
 
 function loadPuzzleLibrary(): PuzzleLibrary {
-  const emptyLibrary = createEmptyPuzzleLibrary()
-  const raw = window.localStorage.getItem(PUZZLE_LIBRARY_STORAGE_KEY)
-
-  if (!raw) {
-    return emptyLibrary
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as StoredPuzzleLibrary
-
-    return {
-      easy: Array.isArray(parsed.easy) ? parsed.easy : [],
-      normal: Array.isArray(parsed.normal) ? parsed.normal : [],
-      hard: Array.isArray(parsed.hard) ? parsed.hard : [],
-      challenge: Array.isArray(parsed.challenge) ? parsed.challenge : [],
-    }
-  } catch {
-    return emptyLibrary
-  }
+  return puzzleLibraryStore.loadCached()
 }
 
 function savePuzzleLibrary(library: PuzzleLibrary) {
-  window.localStorage.setItem(PUZZLE_LIBRARY_STORAGE_KEY, JSON.stringify(library))
-}
-
-function createEmptyPuzzleLibrary(): PuzzleLibrary {
-  return {
-    easy: [],
-    normal: [],
-    hard: [],
-    challenge: [],
-  }
+  puzzleLibraryStore.saveCached(library)
 }
 
 function rebuildOccupiedCells() {
@@ -1257,6 +1257,22 @@ createPlacedShapeSelectionController()
 clearSelection()
 refreshPlacedShapeState()
 refreshViewerState()
+void initializePuzzleLibrary()
+
+async function initializePuzzleLibrary() {
+  const result = await puzzleLibraryStore.syncFromRemote()
+
+  if (!result.ok) {
+    console.warn(result.message)
+    return
+  }
+
+  if (appMode === "viewer") {
+    loadSelectedViewerPuzzle()
+  }
+
+  refreshViewerState()
+}
 
 function createPlacedShapeSelectionController() {
   let pointerDownPos: { x: number, y: number } | null = null
