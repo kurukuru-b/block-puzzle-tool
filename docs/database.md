@@ -15,4 +15,20 @@ VITE_SUPABASE_PUZZLE_TABLE=puzzles
 
 5. Restart the Vite dev server.
 
+## GitHub Pages
+
+GitHub Pages builds the app in GitHub Actions, so `.env.local` is not used there.
+
+Add these repository variables in GitHub:
+
+`Settings` -> `Secrets and variables` -> `Actions` -> `Variables`
+
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-or-publishable-key
+VITE_SUPABASE_PUZZLE_TABLE=puzzles
+```
+
+After saving the variables, push to `main` again or rerun the Pages workflow.
+
 The current SQL allows public read/write access through the browser key. That is fine for a private prototype, but a public production tool should move writes behind Supabase Auth or an Edge Function.
