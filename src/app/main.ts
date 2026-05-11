@@ -219,10 +219,8 @@ function deleteSelectedPlacedShape() {
   }
 
   removePlacedShape(selectedPlacedShapeId)
-  selectedPlacedShapeId = null
-  updateSelectedPlacedShape?.(selectedPlacedShapeId)
   refreshPlacedShapeState()
-  renderSelectedShape()
+  clearSelection()
 }
 
 function editSelectedPlacedShape() {
@@ -236,12 +234,19 @@ function editSelectedPlacedShape() {
     return
   }
 
-  selectedShapeId = null
-  selectedRotation = { ...placedShape.rotation }
-  previewOrigin = { ...placedShape.origin }
+  const { shapeId, origin, rotation } = placedShape
 
+  removePlacedShape(selectedPlacedShapeId)
+  selectedPlacedShapeId = null
+  selectedShapeId = shapeId
+  selectedRotation = { ...rotation }
+  previewOrigin = { ...origin }
+  isPreviewVisible = true
+
+  updateSelectedPlacedShape?.(selectedPlacedShapeId)
   updatePositionControls?.(previewOrigin)
   updateSelectedShapeControl?.(selectedShapeId)
+  refreshPlacedShapeState()
   renderSelectedShape()
 }
 
