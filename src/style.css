@@ -37,10 +37,16 @@ button {
   pointer-events: none;
 }
 
-.shape-selector {
+.editor-panels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.shape-selector,
+.data-panel {
   position: absolute;
   top: 16px;
-  right: 16px;
   width: min(320px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
   overflow-y: auto;
@@ -50,6 +56,14 @@ button {
   background: rgba(248, 250, 252, 0.9);
   box-shadow: 0 14px 32px rgba(42, 52, 68, 0.16);
   pointer-events: auto;
+}
+
+.shape-selector {
+  left: 16px;
+}
+
+.data-panel {
+  right: 16px;
 }
 
 .shape-selector h1 {
@@ -323,6 +337,12 @@ button {
   border-top: 1px solid rgba(105, 114, 130, 0.24);
 }
 
+.data-panel.export-controls {
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(105, 114, 130, 0.28);
+}
+
 .data-actions {
   display: flex;
   flex-wrap: wrap;
@@ -362,12 +382,23 @@ button {
 }
 
 @media (max-width: 560px) {
-  .shape-selector {
+  .shape-selector,
+  .data-panel {
     top: 10px;
-    right: 10px;
     width: calc(100vw - 20px);
     max-height: calc(100vh - 20px);
     padding: 10px;
+  }
+
+  .shape-selector {
+    left: 10px;
+  }
+
+  .data-panel {
+    right: 10px;
+    top: auto;
+    bottom: 10px;
+    max-height: min(34vh, 220px);
   }
 
   .shape-list {

@@ -56,8 +56,12 @@ export function createShapeSelector({
   onExportPuzzle,
   onImportPuzzle,
 }: CreateShapeSelectorParams): ShapeSelector {
+  const root = document.createElement("div")
+  root.className = "editor-panels"
+
   const panel = document.createElement("section")
   panel.className = "shape-selector"
+  root.appendChild(panel)
 
   const title = document.createElement("h1")
   title.textContent = "Block Puzzle Tool"
@@ -225,9 +229,9 @@ export function createShapeSelector({
   placedList.className = "placed-list"
   panel.appendChild(placedList)
 
-  const dataControls = document.createElement("div")
-  dataControls.className = "export-controls"
-  panel.appendChild(dataControls)
+  const dataControls = document.createElement("section")
+  dataControls.className = "export-controls data-panel"
+  root.appendChild(dataControls)
 
   const dataActions = document.createElement("div")
   dataActions.className = "data-actions"
@@ -322,7 +326,7 @@ export function createShapeSelector({
   }
 
   return {
-    element: panel,
+    element: root,
     setPosition,
     setSelectedShape,
     setPlacedShapes,
