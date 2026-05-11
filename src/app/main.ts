@@ -8,8 +8,11 @@ import { createShapeMeshGroup } from "../render/shape/createShapeMeshGroup"
 import { gridToWorld } from "../render/scene/gridToWorld"
 import { DEFAULT_GRID_BOUNDS } from "../core/grid/GridBounds"
 import {
+  type AppMode,
   createShapeSelector,
+  type PuzzleDifficulty,
   type PlacedShapeSummary,
+  type ViewerPanelState,
 } from "../ui/createShapeSelector"
 import {
   rotateShapeCells,
@@ -48,7 +51,21 @@ type PlacedShapeRecord = PlacedShape & {
   group: THREE.Group
 }
 
+const PUZZLE_LIBRARY_STORAGE_KEY = "block-puzzle-tool:puzzle-library"
+
+type StoredPuzzle = PuzzleExport & {
+  id: string
+  difficulty: PuzzleDifficulty
+  title: string
+}
+
+type PuzzleLibrary = Record<PuzzleDifficulty, StoredPuzzle[]>
+
 let activeShapeGroup: THREE.Group | null = null
+let appMode: AppMode = "editor"
+let viewerDifficulty: PuzzleDifficulty = "easy"
+let viewerProblemIndex = 0
+let viewerColorEnabled = true
 let selectedShapeId: string | null = null
 let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
 let previewOrigin: GridPos = { x: 0, y: 0, z: 0 }
@@ -58,6 +75,8 @@ let updatePlacedShapes: ((shapes: PlacedShapeSummary[]) => void) | null = null
 let updateSelectedPlacedShape: ((id: string | null) => void) | null = null
 let updateSelectedShapeControl: ((shapeId: string | null) => void) | null = null
 let updateShapeAvailability: ((shapeId: string, isAvailable: boolean) => void) | null = null
+let updateAppModeControl: ((mode: AppMode) => void) | null = null
+let updateViewerStateControl: ((state: ViewerPanelState) => void) | null = null
 let selectedPlacedShapeId: string | null = null
 let nextPlacedShapeId = 1
 const placedShapes: PlacedShapeRecord[] = []
@@ -111,7 +130,25 @@ function renderSelectedShape() {
   mainScene.scene.add(activeShapeGroup)
 }
 
+function setAppMode(mode: AppMode) {
+  appMode = mode
+  updateAppModeControl?.(appMode)
+  clearSelection()
+
+  if (appMode === "viewer") {
+    loadSelectedViewerPuzzle()
+  } else {
+    rebuildAllPlacedShapeGroups()
+  }
+
+  refreshViewerState()
+}
+
 function selectShape(shapeId: string) {
+  if (appMode !== "editor") {
+    return
+  }
+
   selectedShapeId = shapeId
   selectedRotation = { x: 0, y: 0, z: 0 }
   selectedPlacedShapeId = null
@@ -133,6 +170,10 @@ function clearSelection() {
 }
 
 function rotateSelectedShape(axis: RotationAxis) {
+  if (appMode !== "editor") {
+    return
+  }
+
   if (selectedPlacedShapeId) {
     rotateSelectedPlacedShape(axis)
     return
@@ -151,6 +192,10 @@ function rotateSelectedShape(axis: RotationAxis) {
 }
 
 function resetSelectedRotation() {
+  if (appMode !== "editor") {
+    return
+  }
+
   if (selectedPlacedShapeId) {
     updateSelectedPlacedShapeTransform({ rotation: { x: 0, y: 0, z: 0 } })
     return
@@ -165,6 +210,10 @@ function resetSelectedRotation() {
 }
 
 function placeSelectedShape(): boolean {
+  if (appMode !== "editor") {
+    return false
+  }
+
   if (!selectedShapeId || !isPreviewVisible) {
     return false
   }
@@ -205,6 +254,10 @@ function placeSelectedShape(): boolean {
 }
 
 function placeSelectedShapeAt(pos: GridPos): boolean {
+  if (appMode !== "editor") {
+    return false
+  }
+
   previewOrigin = pos
   isPreviewVisible = true
   updatePositionControls?.(previewOrigin)
@@ -214,6 +267,10 @@ function placeSelectedShapeAt(pos: GridPos): boolean {
 }
 
 function deleteSelectedPlacedShape() {
+  if (appMode !== "editor") {
+    return
+  }
+
   if (!selectedPlacedShapeId) {
     return
   }
@@ -224,6 +281,10 @@ function deleteSelectedPlacedShape() {
 }
 
 function editSelectedPlacedShape() {
+  if (appMode !== "editor") {
+    return
+  }
+
   if (!selectedPlacedShapeId) {
     return
   }
@@ -280,6 +341,7 @@ function importPuzzle(source: string): { ok: boolean, message: string } {
     clearSelection()
     updateSelectedPlacedShape?.(selectedPlacedShapeId)
     refreshPlacedShapeState()
+    refreshViewerState()
     renderSelectedShape()
 
     return {
@@ -294,8 +356,52 @@ function importPuzzle(source: string): { ok: boolean, message: string } {
   }
 }
 
+function registerPuzzle(): { ok: boolean, message: string } {
+  try {
+    if (placedShapes.length === 0) {
+      throw new Error("登録できる配置がありません。")
+    }
+
+    const puzzle = createPuzzleExport(
+      DEFAULT_GRID_BOUNDS,
+      placedShapes.map((shape) => ({
+        shapeId: shape.shapeId,
+        origin: shape.origin,
+        rotation: shape.rotation,
+      })),
+    )
+
+    validateImportPuzzle(puzzle)
+    validateSupportedPuzzle(puzzle)
+
+    const library = loadPuzzleLibrary()
+    const nextNumber = library[viewerDifficulty].length + 1
+
+    library[viewerDifficulty].push({
+      ...puzzle,
+      id: `${viewerDifficulty}-${Date.now()}`,
+      difficulty: viewerDifficulty,
+      title: `${viewerDifficulty} ${nextNumber}`,
+    })
+
+    savePuzzleLibrary(library)
+    viewerProblemIndex = library[viewerDifficulty].length - 1
+    refreshViewerState()
+
+    return {
+      ok: true,
+      message: `Registered ${viewerDifficulty} #${nextNumber}`,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "登録に失敗しました。",
+    }
+  }
+}
+
 function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {
-  if (!selectedShapeId || selectedPlacedShapeId) {
+  if (appMode !== "editor" || !selectedShapeId || selectedPlacedShapeId) {
     return
   }
 
@@ -317,6 +423,10 @@ function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {
 }
 
 function movePreviewOrigin(axis: "x" | "y" | "z", amount: number): GridPos {
+  if (appMode !== "editor") {
+    return previewOrigin
+  }
+
   if (selectedPlacedShapeId) {
     const selectedPlacedShape = getSelectedPlacedShape()
 
@@ -351,6 +461,10 @@ function movePreviewOrigin(axis: "x" | "y" | "z", amount: number): GridPos {
 }
 
 function selectPlacedShape(placedShapeId: string | null) {
+  if (appMode !== "editor") {
+    return
+  }
+
   selectedPlacedShapeId = placedShapeId
   selectedShapeId = null
   isPreviewVisible = false
@@ -396,6 +510,8 @@ function addPlacedShape(placedShape: PlacedShape) {
   const placedGroup = createShapeMeshGroup({
     ...shape,
     cells: rotatedCells,
+  }, {
+    color: getPlacedShapeColor(shape.color),
   })
   const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
 
@@ -444,6 +560,103 @@ function refreshPlacedShapeState() {
 
   for (const shape of shapeDefinitions) {
     updateShapeAvailability?.(shape.id, !isShapePlaced(shape.id))
+  }
+}
+
+function selectViewerDifficulty(difficulty: PuzzleDifficulty) {
+  viewerDifficulty = difficulty
+  viewerProblemIndex = 0
+  loadSelectedViewerPuzzle()
+  refreshViewerState()
+}
+
+function moveViewerProblem(amount: number) {
+  const puzzles = loadPuzzleLibrary()[viewerDifficulty]
+
+  if (puzzles.length === 0) {
+    viewerProblemIndex = 0
+    refreshViewerState()
+    return
+  }
+
+  viewerProblemIndex = (viewerProblemIndex + amount + puzzles.length) % puzzles.length
+  loadSelectedViewerPuzzle()
+  refreshViewerState()
+}
+
+function toggleViewerColor() {
+  viewerColorEnabled = !viewerColorEnabled
+  rebuildAllPlacedShapeGroups()
+  refreshViewerState()
+}
+
+function refreshViewerState() {
+  updateViewerStateControl?.(getViewerPanelState())
+}
+
+function getViewerPanelState(): ViewerPanelState {
+  const problemCount = loadPuzzleLibrary()[viewerDifficulty].length
+
+  return {
+    difficulty: viewerDifficulty,
+    problemIndex: problemCount === 0 ? 0 : clamp(viewerProblemIndex, 0, problemCount - 1),
+    problemCount,
+    colorEnabled: viewerColorEnabled,
+    timerText: "00:00",
+  }
+}
+
+function loadSelectedViewerPuzzle() {
+  const puzzles = loadPuzzleLibrary()[viewerDifficulty]
+
+  if (puzzles.length === 0) {
+    clearPlacedShapes()
+    refreshPlacedShapeState()
+    return
+  }
+
+  viewerProblemIndex = clamp(viewerProblemIndex, 0, puzzles.length - 1)
+  clearPlacedShapes()
+
+  for (const placedShape of puzzles[viewerProblemIndex].placedShapes) {
+    addPlacedShape(placedShape)
+  }
+
+  refreshPlacedShapeState()
+}
+
+function loadPuzzleLibrary(): PuzzleLibrary {
+  const emptyLibrary = createEmptyPuzzleLibrary()
+  const raw = window.localStorage.getItem(PUZZLE_LIBRARY_STORAGE_KEY)
+
+  if (!raw) {
+    return emptyLibrary
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<Record<PuzzleDifficulty, StoredPuzzle[]>>
+
+    return {
+      easy: Array.isArray(parsed.easy) ? parsed.easy : [],
+      normal: Array.isArray(parsed.normal) ? parsed.normal : [],
+      hard: Array.isArray(parsed.hard) ? parsed.hard : [],
+      expert: Array.isArray(parsed.expert) ? parsed.expert : [],
+    }
+  } catch {
+    return emptyLibrary
+  }
+}
+
+function savePuzzleLibrary(library: PuzzleLibrary) {
+  window.localStorage.setItem(PUZZLE_LIBRARY_STORAGE_KEY, JSON.stringify(library))
+}
+
+function createEmptyPuzzleLibrary(): PuzzleLibrary {
+  return {
+    easy: [],
+    normal: [],
+    hard: [],
+    expert: [],
   }
 }
 
@@ -655,6 +868,8 @@ function rebuildPlacedShapeGroup(placedShape: PlacedShapeRecord) {
   const placedGroup = createShapeMeshGroup({
     ...shape,
     cells: rotateShapeCells(shape.cells, placedShape.rotation),
+  }, {
+    color: getPlacedShapeColor(shape.color),
   })
   const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
 
@@ -667,6 +882,20 @@ function rebuildPlacedShapeGroup(placedShape: PlacedShapeRecord) {
   placedShape.group = placedGroup
   mainScene.scene.add(placedGroup)
   updatePlacedShapeHighlights()
+}
+
+function rebuildAllPlacedShapeGroups() {
+  for (const placedShape of placedShapes) {
+    rebuildPlacedShapeGroup(placedShape)
+  }
+}
+
+function getPlacedShapeColor(shapeColor: number): number {
+  if (appMode === "viewer" && !viewerColorEnabled) {
+    return 0xd9dee8
+  }
+
+  return shapeColor
 }
 
 function getOccupiedCellsExcluding(excludedPlacedShapeId: string): Set<string> {
@@ -780,11 +1009,17 @@ if (shapeDefinitions.length === 0) {
 
 const shapeSelector = createShapeSelector({
   shapes: shapeDefinitions,
+  initialMode: appMode,
+  initialViewerState: getViewerPanelState(),
   selectedShapeId,
   initialPosition: previewOrigin,
+  onModeChange: setAppMode,
   onSelect: selectShape,
   onClearSelection: clearSelection,
   onSelectPlacedShape: selectPlacedShape,
+  onSelectDifficulty: selectViewerDifficulty,
+  onMoveProblem: moveViewerProblem,
+  onToggleColor: toggleViewerColor,
   onRotate: rotateSelectedShape,
   onResetRotation: resetSelectedRotation,
   onMovePosition: movePreviewOrigin,
@@ -793,8 +1028,11 @@ const shapeSelector = createShapeSelector({
   onEditPlacedShape: editSelectedPlacedShape,
   onExportPuzzle: exportPuzzle,
   onImportPuzzle: importPuzzle,
+  onRegisterPuzzle: registerPuzzle,
 })
 
+updateAppModeControl = shapeSelector.setMode
+updateViewerStateControl = shapeSelector.setViewerState
 updatePositionControls = shapeSelector.setPosition
 updatePlacedShapes = shapeSelector.setPlacedShapes
 updateSelectedPlacedShape = shapeSelector.setSelectedPlacedShape
@@ -809,6 +1047,10 @@ createGridPointerController({
   scene: mainScene.scene,
   onHoverHits: previewSelectedShapeAt,
   onTapHits: (hits, event) => {
+    if (appMode !== "editor") {
+      return
+    }
+
     const candidateOrigin = getFirstPreviewOrigin([
       ...getPlacedShapePointerHits(event),
       ...hits,
@@ -824,6 +1066,7 @@ createPlacedShapeSelectionController()
 
 clearSelection()
 refreshPlacedShapeState()
+refreshViewerState()
 
 function createPlacedShapeSelectionController() {
   let pointerDownPos: { x: number, y: number } | null = null

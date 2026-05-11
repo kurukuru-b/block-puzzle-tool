@@ -60,6 +60,11 @@ button {
 
 .shape-selector {
   left: 16px;
+  display: none;
+}
+
+.shape-selector.is-visible {
+  display: block;
 }
 
 .data-panel {
@@ -136,6 +141,52 @@ button {
   border-color: #2563eb;
   background: #eff6ff;
   box-shadow: inset 0 0 0 1px #2563eb;
+}
+
+.mode-controls,
+.difficulty-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mode-controls {
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(105, 114, 130, 0.24);
+}
+
+.difficulty-controls {
+  margin-top: 12px;
+}
+
+.problem-controls,
+.viewer-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(105, 114, 130, 0.24);
+}
+
+.problem-controls {
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+}
+
+.viewer-actions {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.problem-label,
+.timer-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .secondary-action-button.is-selected {
@@ -347,6 +398,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 12px;
 }
 
 .export-button {

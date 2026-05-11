@@ -4,6 +4,10 @@ import type { GridPos } from "../core/grid/GridPos"
 
 type GridAxis = "x" | "y" | "z"
 
+export type AppMode = "editor" | "viewer"
+
+export type PuzzleDifficulty = "easy" | "normal" | "hard" | "expert"
+
 export type PlacedShapeSummary = {
   id: string
   shapeId: string
@@ -14,13 +18,27 @@ export type ImportPuzzleResult = {
   message: string
 }
 
+export type ViewerPanelState = {
+  difficulty: PuzzleDifficulty
+  problemIndex: number
+  problemCount: number
+  colorEnabled: boolean
+  timerText: string
+}
+
 type CreateShapeSelectorParams = {
   shapes: ShapeDefinition[]
+  initialMode: AppMode
+  initialViewerState: ViewerPanelState
   selectedShapeId: string | null
   initialPosition: GridPos
+  onModeChange: (mode: AppMode) => void
   onSelect: (shapeId: string) => void
   onClearSelection: () => void
   onSelectPlacedShape: (placedShapeId: string) => void
+  onSelectDifficulty: (difficulty: PuzzleDifficulty) => void
+  onMoveProblem: (amount: number) => void
+  onToggleColor: () => void
   onRotate: (axis: RotationAxis) => void
   onResetRotation: () => void
   onMovePosition: (axis: GridAxis, amount: number) => GridPos
@@ -29,10 +47,13 @@ type CreateShapeSelectorParams = {
   onEditPlacedShape: () => void
   onExportPuzzle: () => string
   onImportPuzzle: (source: string) => ImportPuzzleResult
+  onRegisterPuzzle: () => ImportPuzzleResult
 }
 
 type ShapeSelector = {
   element: HTMLElement
+  setMode: (mode: AppMode) => void
+  setViewerState: (state: ViewerPanelState) => void
   setPosition: (pos: GridPos) => void
   setSelectedShape: (shapeId: string | null) => void
   setPlacedShapes: (shapes: PlacedShapeSummary[]) => void
@@ -42,11 +63,17 @@ type ShapeSelector = {
 
 export function createShapeSelector({
   shapes,
+  initialMode,
+  initialViewerState,
   selectedShapeId,
   initialPosition,
+  onModeChange,
   onSelect,
   onClearSelection,
   onSelectPlacedShape,
+  onSelectDifficulty,
+  onMoveProblem,
+  onToggleColor,
   onRotate,
   onResetRotation,
   onMovePosition,
@@ -55,17 +82,22 @@ export function createShapeSelector({
   onEditPlacedShape,
   onExportPuzzle,
   onImportPuzzle,
+  onRegisterPuzzle,
 }: CreateShapeSelectorParams): ShapeSelector {
   const root = document.createElement("div")
   root.className = "editor-panels"
 
-  const panel = document.createElement("section")
-  panel.className = "shape-selector"
-  root.appendChild(panel)
+  const editorPanel = document.createElement("section")
+  editorPanel.className = "shape-selector editor-panel"
+  root.appendChild(editorPanel)
+
+  const viewerPanel = document.createElement("section")
+  viewerPanel.className = "shape-selector viewer-panel"
+  root.appendChild(viewerPanel)
 
   const title = document.createElement("h1")
   title.textContent = "Block Puzzle Tool"
-  panel.appendChild(title)
+  editorPanel.appendChild(title)
 
   const clearSelectionButton = document.createElement("button")
   clearSelectionButton.type = "button"
@@ -77,11 +109,11 @@ export function createShapeSelector({
     setSelectedShape(null)
     setSelectedPlacedShape(null)
   })
-  panel.appendChild(clearSelectionButton)
+  editorPanel.appendChild(clearSelectionButton)
 
   const shapeList = document.createElement("div")
   shapeList.className = "shape-list"
-  panel.appendChild(shapeList)
+  editorPanel.appendChild(shapeList)
   const shapeButtons = new Map<string, HTMLButtonElement>()
 
   for (const shape of shapes) {
@@ -119,7 +151,7 @@ export function createShapeSelector({
 
   const rotationControls = document.createElement("div")
   rotationControls.className = "rotation-controls"
-  panel.appendChild(rotationControls)
+  editorPanel.appendChild(rotationControls)
 
   for (const axis of ["x", "y", "z"] satisfies RotationAxis[]) {
     const button = document.createElement("button")
@@ -141,7 +173,7 @@ export function createShapeSelector({
 
   const positionControls = document.createElement("div")
   positionControls.className = "position-controls"
-  panel.appendChild(positionControls)
+  editorPanel.appendChild(positionControls)
 
   const positionValues = new Map<GridAxis, HTMLElement>()
 
@@ -187,7 +219,7 @@ export function createShapeSelector({
 
   const actionControls = document.createElement("div")
   actionControls.className = "action-controls"
-  panel.appendChild(actionControls)
+  editorPanel.appendChild(actionControls)
 
   const placeButton = document.createElement("button")
   placeButton.type = "button"
@@ -205,7 +237,7 @@ export function createShapeSelector({
 
   const selectedControls = document.createElement("div")
   selectedControls.className = "selected-controls"
-  panel.appendChild(selectedControls)
+  editorPanel.appendChild(selectedControls)
 
   const selectedLabel = document.createElement("span")
   selectedLabel.className = "selected-label"
@@ -227,11 +259,84 @@ export function createShapeSelector({
 
   const placedList = document.createElement("div")
   placedList.className = "placed-list"
-  panel.appendChild(placedList)
+  editorPanel.appendChild(placedList)
+
+  const viewerTitle = document.createElement("h1")
+  viewerTitle.textContent = "Viewer"
+  viewerPanel.appendChild(viewerTitle)
+
+  const difficultyControls = document.createElement("div")
+  difficultyControls.className = "difficulty-controls"
+  viewerPanel.appendChild(difficultyControls)
+  const difficultyButtons = new Map<PuzzleDifficulty, HTMLButtonElement>()
+
+  for (const difficulty of ["easy", "normal", "hard", "expert"] satisfies PuzzleDifficulty[]) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "secondary-action-button difficulty-button"
+    button.textContent = difficulty
+    button.addEventListener("click", () => onSelectDifficulty(difficulty))
+    difficultyControls.appendChild(button)
+    difficultyButtons.set(difficulty, button)
+  }
+
+  const problemControls = document.createElement("div")
+  problemControls.className = "problem-controls"
+  viewerPanel.appendChild(problemControls)
+
+  const previousProblemButton = document.createElement("button")
+  previousProblemButton.type = "button"
+  previousProblemButton.className = "secondary-action-button"
+  previousProblemButton.textContent = "-"
+  previousProblemButton.setAttribute("aria-label", "Previous problem")
+  previousProblemButton.addEventListener("click", () => onMoveProblem(-1))
+  problemControls.appendChild(previousProblemButton)
+
+  const problemLabel = document.createElement("span")
+  problemLabel.className = "problem-label"
+  problemControls.appendChild(problemLabel)
+
+  const nextProblemButton = document.createElement("button")
+  nextProblemButton.type = "button"
+  nextProblemButton.className = "secondary-action-button"
+  nextProblemButton.textContent = "+"
+  nextProblemButton.setAttribute("aria-label", "Next problem")
+  nextProblemButton.addEventListener("click", () => onMoveProblem(1))
+  problemControls.appendChild(nextProblemButton)
+
+  const viewerActions = document.createElement("div")
+  viewerActions.className = "viewer-actions"
+  viewerPanel.appendChild(viewerActions)
+
+  const colorButton = document.createElement("button")
+  colorButton.type = "button"
+  colorButton.className = "secondary-action-button color-toggle-button"
+  colorButton.addEventListener("click", onToggleColor)
+  viewerActions.appendChild(colorButton)
+
+  const timerLabel = document.createElement("span")
+  timerLabel.className = "timer-label"
+  viewerActions.appendChild(timerLabel)
 
   const dataControls = document.createElement("section")
   dataControls.className = "export-controls data-panel"
   root.appendChild(dataControls)
+
+  const modeControls = document.createElement("div")
+  modeControls.className = "mode-controls"
+  dataControls.appendChild(modeControls)
+
+  const modeButtons = new Map<AppMode, HTMLButtonElement>()
+
+  for (const mode of ["editor", "viewer"] satisfies AppMode[]) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "secondary-action-button mode-button"
+    button.textContent = mode === "editor" ? "Editor" : "Viewer"
+    button.addEventListener("click", () => onModeChange(mode))
+    modeControls.appendChild(button)
+    modeButtons.set(mode, button)
+  }
 
   const dataActions = document.createElement("div")
   dataActions.className = "data-actions"
@@ -254,6 +359,12 @@ export function createShapeSelector({
   importButton.className = "secondary-action-button export-button"
   importButton.textContent = "Import"
   dataActions.appendChild(importButton)
+
+  const registerButton = document.createElement("button")
+  registerButton.type = "button"
+  registerButton.className = "secondary-action-button export-button"
+  registerButton.textContent = "Register"
+  dataActions.appendChild(registerButton)
 
   const dataText = document.createElement("textarea")
   dataText.className = "export-output"
@@ -315,6 +426,15 @@ export function createShapeSelector({
     importStatus.classList.toggle("is-error", !result.ok)
   })
 
+  registerButton.addEventListener("click", () => {
+    const result = onRegisterPuzzle()
+
+    importStatus.textContent = result.message
+    importStatus.classList.toggle("is-error", !result.ok)
+  })
+
+  setMode(initialMode)
+  setViewerState(initialViewerState)
   setPosition(initialPosition)
   setPlacedShapes([])
   setSelectedPlacedShape(null)
@@ -327,6 +447,8 @@ export function createShapeSelector({
 
   return {
     element: root,
+    setMode,
+    setViewerState,
     setPosition,
     setSelectedShape,
     setPlacedShapes,
@@ -365,6 +487,34 @@ export function createShapeSelector({
       item.addEventListener("click", () => onSelectPlacedShape(shape.id))
       placedList.appendChild(item)
     }
+  }
+
+  function setMode(mode: AppMode) {
+    editorPanel.classList.toggle("is-visible", mode === "editor")
+    viewerPanel.classList.toggle("is-visible", mode === "viewer")
+
+    for (const [itemMode, button] of modeButtons) {
+      const isSelected = itemMode === mode
+      button.classList.toggle("is-selected", isSelected)
+      button.setAttribute("aria-pressed", String(isSelected))
+    }
+  }
+
+  function setViewerState(state: ViewerPanelState) {
+    for (const [difficulty, button] of difficultyButtons) {
+      const isSelected = difficulty === state.difficulty
+      button.classList.toggle("is-selected", isSelected)
+      button.setAttribute("aria-pressed", String(isSelected))
+    }
+
+    problemLabel.textContent = state.problemCount === 0
+      ? "No problems"
+      : `${state.problemIndex + 1} / ${state.problemCount}`
+    previousProblemButton.disabled = state.problemCount <= 1
+    nextProblemButton.disabled = state.problemCount <= 1
+    colorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
+    colorButton.classList.toggle("is-selected", state.colorEnabled)
+    timerLabel.textContent = state.timerText
   }
 
   function setSelectedPlacedShape(id: string | null) {
