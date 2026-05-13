@@ -68,8 +68,8 @@ let appMode: AppMode = "editor"
 let viewerDifficulty: PuzzleDifficulty = "easy"
 let viewerProblemIndex = 0
 let viewerProblemSelected = false
-let viewerColorEnabled = true
-let timerMode: TimerMode = "up"
+let viewerColorEnabled = false
+let timerMode: TimerMode = "down"
 let timerRunning = false
 let timerElapsedSeconds = 0
 let countdownSeconds = 300
@@ -155,6 +155,9 @@ function setAppMode(mode: AppMode) {
   clearSelection()
 
   if (appMode === "viewer") {
+    viewerColorEnabled = false
+    timerMode = "down"
+    resetTimer()
     clearViewerProblemSelection()
   } else {
     if (previousMode === "viewer" && editorBoardSnapshotBeforeViewer) {

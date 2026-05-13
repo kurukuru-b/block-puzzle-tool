@@ -45,8 +45,8 @@ button {
 
 .ui-toggle-button {
   position: absolute;
-  top: 18px;
-  left: 286px;
+  top: 24px;
+  left: 234px;
   z-index: 3;
   height: 34px;
   padding: 0 12px;
@@ -89,6 +89,7 @@ button {
 
 .editor-panels.is-ui-hidden .ui-toggle-button {
   left: 16px;
+  top: 16px;
 }
 
 .shape-selector,
