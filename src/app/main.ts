@@ -959,7 +959,7 @@ function playTimerDoneSound() {
     oscillator.type = "square"
     oscillator.frequency.setValueAtTime(frequency, start)
     gain.gain.setValueAtTime(0.0001, start)
-    gain.gain.exponentialRampToValueAtTime(0.24, start + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.42, start + 0.02)
     gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14)
 
     oscillator.connect(gain)
@@ -1418,11 +1418,11 @@ function clamp(value: number, min: number, max: number): number {
 
 function createEditorAxisGuide(): THREE.Group {
   const group = new THREE.Group()
-  const origin = new THREE.Vector3(-2.75, -2.75, -2.75)
+  const origin = new THREE.Vector3(-2, -2, -2)
   const axes = [
-    { label: "X", color: 0xef4444, end: new THREE.Vector3(1.35, 0, 0) },
-    { label: "Y", color: 0x22c55e, end: new THREE.Vector3(0, 1.35, 0) },
-    { label: "Z", color: 0x3b82f6, end: new THREE.Vector3(0, 0, 1.35) },
+    { label: "X", color: 0xef4444, end: new THREE.Vector3(4, 0, 0) },
+    { label: "Y", color: 0x22c55e, end: new THREE.Vector3(0, 4, 0) },
+    { label: "Z", color: 0x3b82f6, end: new THREE.Vector3(0, 0, 4) },
   ]
 
   group.position.copy(origin)
@@ -1439,7 +1439,7 @@ function createEditorAxisGuide(): THREE.Group {
     const line = new THREE.Line(geometry, material)
     const label = createAxisLabel(axis.label, axis.color)
 
-    label.position.copy(axis.end).multiplyScalar(1.16)
+    label.position.copy(axis.end)
     group.add(line, label)
   }
 
