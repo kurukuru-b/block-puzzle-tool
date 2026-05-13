@@ -54,6 +54,7 @@ type CreateShapeSelectorParams = {
   onMoveProblem: (amount: number) => void
   onRandomProblem: () => void
   onSelectProblem: (puzzleId: string) => void
+  onClearViewerProblem: () => void
   onRenameProblem: (title: string) => MaybePromise<ImportPuzzleResult>
   onMoveProblemDifficulty: (difficulty: PuzzleDifficulty) => MaybePromise<ImportPuzzleResult>
   onDeleteProblem: () => MaybePromise<ImportPuzzleResult>
@@ -66,6 +67,9 @@ type CreateShapeSelectorParams = {
   onResetRotation: () => void
   onMovePosition: (axis: GridAxis, amount: number) => GridPos
   onPlaceShape: () => boolean
+  onResetBoard: () => void
+  onUndo: () => void
+  onRedo: () => void
   onDeletePlacedShape: () => void
   onEditPlacedShape: () => void
   onExportPuzzle: () => string
@@ -98,6 +102,7 @@ export function createShapeSelector({
   onMoveProblem,
   onRandomProblem,
   onSelectProblem,
+  onClearViewerProblem,
   onRenameProblem,
   onMoveProblemDifficulty,
   onDeleteProblem,
@@ -110,6 +115,9 @@ export function createShapeSelector({
   onResetRotation,
   onMovePosition,
   onPlaceShape,
+  onResetBoard,
+  onUndo,
+  onRedo,
   onDeletePlacedShape,
   onEditPlacedShape,
   onExportPuzzle,
@@ -118,6 +126,23 @@ export function createShapeSelector({
 }: CreateShapeSelectorParams): ShapeSelector {
   const root = document.createElement("div")
   root.className = "editor-panels"
+
+  const uiToggleButton = document.createElement("button")
+  uiToggleButton.type = "button"
+  uiToggleButton.className = "ui-toggle-button"
+  uiToggleButton.textContent = "Hide UI"
+  uiToggleButton.setAttribute("aria-pressed", "false")
+  uiToggleButton.addEventListener("click", () => {
+    const isHidden = root.classList.toggle("is-ui-hidden")
+
+    uiToggleButton.textContent = isHidden ? "Show UI" : "Hide UI"
+    uiToggleButton.setAttribute("aria-pressed", String(isHidden))
+  })
+  root.appendChild(uiToggleButton)
+
+  const timerOverlay = document.createElement("span")
+  timerOverlay.className = "timer-overlay"
+  root.appendChild(timerOverlay)
 
   const editorPanel = document.createElement("section")
   editorPanel.className = "shape-selector editor-panel"
@@ -268,6 +293,31 @@ export function createShapeSelector({
   placedCount.className = "placed-count"
   actionControls.appendChild(placedCount)
 
+  const boardControls = document.createElement("div")
+  boardControls.className = "board-controls"
+  editorPanel.appendChild(boardControls)
+
+  const undoButton = document.createElement("button")
+  undoButton.type = "button"
+  undoButton.className = "secondary-action-button"
+  undoButton.textContent = "Undo"
+  undoButton.addEventListener("click", onUndo)
+  boardControls.appendChild(undoButton)
+
+  const redoButton = document.createElement("button")
+  redoButton.type = "button"
+  redoButton.className = "secondary-action-button"
+  redoButton.textContent = "Redo"
+  redoButton.addEventListener("click", onRedo)
+  boardControls.appendChild(redoButton)
+
+  const resetBoardButton = document.createElement("button")
+  resetBoardButton.type = "button"
+  resetBoardButton.className = "secondary-action-button danger-action-button"
+  resetBoardButton.textContent = "Reset Board"
+  resetBoardButton.addEventListener("click", onResetBoard)
+  boardControls.appendChild(resetBoardButton)
+
   const selectedControls = document.createElement("div")
   selectedControls.className = "selected-controls"
   editorPanel.appendChild(selectedControls)
@@ -344,6 +394,14 @@ export function createShapeSelector({
   randomProblemButton.setAttribute("aria-label", "Random problem")
   randomProblemButton.addEventListener("click", onRandomProblem)
   problemControls.appendChild(randomProblemButton)
+
+  const clearViewerProblemButton = document.createElement("button")
+  clearViewerProblemButton.type = "button"
+  clearViewerProblemButton.className = "secondary-action-button clear-viewer-problem-button"
+  clearViewerProblemButton.textContent = "None"
+  clearViewerProblemButton.setAttribute("aria-label", "Clear selected viewer problem")
+  clearViewerProblemButton.addEventListener("click", onClearViewerProblem)
+  problemControls.appendChild(clearViewerProblemButton)
 
   const problemTitle = document.createElement("span")
   problemTitle.className = "problem-title"
@@ -709,6 +767,7 @@ export function createShapeSelector({
     previousProblemButton.disabled = state.problemCount <= 1
     nextProblemButton.disabled = state.problemCount <= 1
     randomProblemButton.disabled = state.problemCount === 0
+    clearViewerProblemButton.disabled = state.selectedPuzzleId === null
     problemTitleInput.disabled = state.selectedPuzzleId === null
     renameProblemButton.disabled = state.selectedPuzzleId === null
     deleteProblemButton.disabled = state.selectedPuzzleId === null
@@ -729,6 +788,8 @@ export function createShapeSelector({
     colorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
     colorButton.classList.toggle("is-selected", state.colorEnabled)
     timerLabel.textContent = state.timerText
+    timerOverlay.textContent = state.timerText
+    timerOverlay.classList.toggle("is-running", state.timerRunning)
     timerPanel.classList.toggle("is-running", state.timerRunning)
     timerStartStopButton.textContent = state.timerRunning ? "Stop" : "Start"
     countdownInput.value = String(Math.max(1, state.countdownSeconds))
@@ -750,6 +811,7 @@ export function createShapeSelector({
   }
 
   function rebuildProblemList(state: ViewerPanelState) {
+    const previousScrollTop = problemList.scrollTop
     problemList.replaceChildren()
 
     if (state.puzzles.length === 0) {
@@ -757,6 +819,7 @@ export function createShapeSelector({
       empty.className = "problem-empty"
       empty.textContent = "No registered problems"
       problemList.appendChild(empty)
+      problemList.scrollTop = previousScrollTop
       return
     }
 
@@ -784,6 +847,8 @@ export function createShapeSelector({
 
       problemList.appendChild(item)
     })
+
+    problemList.scrollTop = previousScrollTop
   }
 
   function formatDifficulty(difficulty: PuzzleDifficulty): string {

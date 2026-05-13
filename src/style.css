@@ -43,6 +43,51 @@ button {
   pointer-events: none;
 }
 
+.ui-toggle-button {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 3;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(105, 114, 130, 0.32);
+  border-radius: 6px;
+  color: #252b36;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 8px 20px rgba(42, 52, 68, 0.14);
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+.timer-overlay {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2;
+  min-width: 150px;
+  padding: 10px 14px;
+  border: 1px solid rgba(105, 114, 130, 0.26);
+  border-radius: 8px;
+  color: #111827;
+  background: rgba(248, 250, 252, 0.82);
+  box-shadow: 0 14px 32px rgba(42, 52, 68, 0.16);
+  font: 900 34px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-align: center;
+  pointer-events: none;
+}
+
+.timer-overlay.is-running {
+  border-color: rgba(37, 99, 235, 0.38);
+  background: rgba(239, 246, 255, 0.9);
+}
+
+.editor-panels.is-ui-hidden .shape-selector,
+.editor-panels.is-ui-hidden .data-panel {
+  display: none;
+}
+
 .shape-selector,
 .data-panel {
   position: absolute;
@@ -177,6 +222,11 @@ button {
 }
 
 .random-problem-button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.clear-viewer-problem-button {
   grid-column: 1 / -1;
   width: 100%;
 }
@@ -428,6 +478,13 @@ button {
   font-weight: 650;
 }
 
+.board-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .position-controls {
   display: grid;
   gap: 8px;
@@ -645,6 +702,14 @@ button {
     top: auto;
     bottom: 10px;
     max-height: min(34vh, 220px);
+  }
+
+  .timer-overlay {
+    right: 10px;
+    bottom: 10px;
+    min-width: 124px;
+    padding: 8px 10px;
+    font-size: 26px;
   }
 
   .shape-list {

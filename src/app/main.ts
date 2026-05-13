@@ -45,6 +45,9 @@ import {
 } from "./puzzleLibraryStore"
 
 const mainScene = createMainScene()
+const editorAxisGuide = createEditorAxisGuide()
+
+mainScene.scene.add(editorAxisGuide)
 
 const app = document.querySelector<HTMLDivElement>("#app")
 
@@ -57,11 +60,14 @@ type PlacedShapeRecord = PlacedShape & {
   group: THREE.Group
 }
 
+type PlacedShapeSnapshot = PlacedShape[]
+
 const puzzleLibraryStore = createPuzzleLibraryStore()
 let activeShapeGroup: THREE.Group | null = null
 let appMode: AppMode = "editor"
 let viewerDifficulty: PuzzleDifficulty = "easy"
 let viewerProblemIndex = 0
+let viewerProblemSelected = false
 let viewerColorEnabled = true
 let timerMode: TimerMode = "up"
 let timerRunning = false
@@ -81,8 +87,12 @@ let updateAppModeControl: ((mode: AppMode) => void) | null = null
 let updateViewerStateControl: ((state: ViewerPanelState) => void) | null = null
 let selectedPlacedShapeId: string | null = null
 let nextPlacedShapeId = 1
+let editorBoardSnapshotBeforeViewer: PlacedShapeSnapshot | null = null
 const placedShapes: PlacedShapeRecord[] = []
 const occupiedCells = new Set<string>()
+const undoStack: PlacedShapeSnapshot[] = []
+const redoStack: PlacedShapeSnapshot[] = []
+let isApplyingHistory = false
 
 function renderSelectedShape() {
   if (activeShapeGroup) {
@@ -133,14 +143,26 @@ function renderSelectedShape() {
 }
 
 function setAppMode(mode: AppMode) {
+  const previousMode = appMode
+
+  if (previousMode === "editor" && mode === "viewer") {
+    editorBoardSnapshotBeforeViewer = getPlacedShapeSnapshot()
+  }
+
   appMode = mode
+  editorAxisGuide.visible = appMode === "editor"
   updateAppModeControl?.(appMode)
   clearSelection()
 
   if (appMode === "viewer") {
-    loadSelectedViewerPuzzle()
+    clearViewerProblemSelection()
   } else {
-    rebuildAllPlacedShapeGroups()
+    if (previousMode === "viewer" && editorBoardSnapshotBeforeViewer) {
+      restorePlacedShapeSnapshot(editorBoardSnapshotBeforeViewer)
+      editorBoardSnapshotBeforeViewer = null
+    } else {
+      rebuildAllPlacedShapeGroups()
+    }
   }
 
   refreshViewerState()
@@ -242,6 +264,7 @@ function placeSelectedShape(): boolean {
     return false
   }
 
+  pushUndoState()
   addPlacedShape({
     shapeId: selectedShapeId,
     origin: { ...previewOrigin },
@@ -277,6 +300,7 @@ function deleteSelectedPlacedShape() {
     return
   }
 
+  pushUndoState()
   removePlacedShape(selectedPlacedShapeId)
   refreshPlacedShapeState()
   clearSelection()
@@ -299,6 +323,7 @@ function editSelectedPlacedShape() {
 
   const { shapeId, origin, rotation } = placedShape
 
+  pushUndoState()
   removePlacedShape(selectedPlacedShapeId)
   selectedPlacedShapeId = null
   selectedShapeId = shapeId
@@ -334,6 +359,7 @@ function importPuzzle(source: string): { ok: boolean, message: string } {
     const puzzle = parsePuzzleExport(source)
 
     validateImportPuzzle(puzzle)
+    pushUndoState()
     clearPlacedShapes()
 
     for (const placedShape of puzzle.placedShapes) {
@@ -565,6 +591,67 @@ function clearPlacedShapes() {
   selectedPlacedShapeId = null
 }
 
+function resetEditorBoard() {
+  if (appMode !== "editor" || placedShapes.length === 0) {
+    return
+  }
+
+  pushUndoState()
+  clearPlacedShapes()
+  clearSelection()
+  refreshPlacedShapeState()
+  renderSelectedShape()
+}
+
+function undoEditorAction() {
+  if (appMode !== "editor" || undoStack.length === 0) {
+    return
+  }
+
+  redoStack.push(getPlacedShapeSnapshot())
+  restorePlacedShapeSnapshot(undoStack.pop()!)
+}
+
+function redoEditorAction() {
+  if (appMode !== "editor" || redoStack.length === 0) {
+    return
+  }
+
+  undoStack.push(getPlacedShapeSnapshot())
+  restorePlacedShapeSnapshot(redoStack.pop()!)
+}
+
+function pushUndoState() {
+  if (isApplyingHistory) {
+    return
+  }
+
+  undoStack.push(getPlacedShapeSnapshot())
+  redoStack.length = 0
+}
+
+function getPlacedShapeSnapshot(): PlacedShapeSnapshot {
+  return placedShapes.map((shape) => ({
+    shapeId: shape.shapeId,
+    origin: { ...shape.origin },
+    rotation: { ...shape.rotation },
+  }))
+}
+
+function restorePlacedShapeSnapshot(snapshot: PlacedShapeSnapshot) {
+  isApplyingHistory = true
+  clearPlacedShapes()
+
+  for (const placedShape of snapshot) {
+    addPlacedShape(placedShape)
+  }
+
+  clearSelection()
+  refreshPlacedShapeState()
+  renderSelectedShape()
+  isApplyingHistory = false
+}
+
 function updatePlacedShapeHighlights() {
   for (const placedShape of placedShapes) {
     const isSelected = placedShape.id === selectedPlacedShapeId
@@ -586,8 +673,7 @@ function refreshPlacedShapeState() {
 function selectViewerDifficulty(difficulty: PuzzleDifficulty) {
   viewerDifficulty = difficulty
   viewerProblemIndex = 0
-  loadSelectedViewerPuzzle()
-  refreshViewerState()
+  clearViewerProblemSelection()
 }
 
 function moveViewerProblem(amount: number) {
@@ -595,11 +681,14 @@ function moveViewerProblem(amount: number) {
 
   if (puzzles.length === 0) {
     viewerProblemIndex = 0
+    viewerProblemSelected = false
+    loadSelectedViewerPuzzle()
     refreshViewerState()
     return
   }
 
   viewerProblemIndex = (viewerProblemIndex + amount + puzzles.length) % puzzles.length
+  viewerProblemSelected = true
   loadSelectedViewerPuzzle()
   refreshViewerState()
 }
@@ -609,12 +698,15 @@ function selectRandomViewerProblem() {
 
   if (puzzles.length === 0) {
     viewerProblemIndex = 0
+    viewerProblemSelected = false
+    loadSelectedViewerPuzzle()
     refreshViewerState()
     return
   }
 
   if (puzzles.length === 1) {
     viewerProblemIndex = 0
+    viewerProblemSelected = true
     loadSelectedViewerPuzzle()
     refreshViewerState()
     return
@@ -627,6 +719,7 @@ function selectRandomViewerProblem() {
   }
 
   viewerProblemIndex = nextIndex
+  viewerProblemSelected = true
   loadSelectedViewerPuzzle()
   refreshViewerState()
 }
@@ -640,7 +733,15 @@ function selectViewerProblem(puzzleId: string) {
   }
 
   viewerProblemIndex = index
+  viewerProblemSelected = true
   loadSelectedViewerPuzzle()
+  refreshViewerState()
+}
+
+function clearViewerProblemSelection() {
+  viewerProblemSelected = false
+  clearPlacedShapes()
+  refreshPlacedShapeState()
   refreshViewerState()
 }
 
@@ -658,7 +759,7 @@ async function renameSelectedViewerProblem(title: string): Promise<{ ok: boolean
   const puzzles = library[viewerDifficulty]
   const puzzle = puzzles[viewerProblemIndex]
 
-  if (!puzzle) {
+  if (!viewerProblemSelected || !puzzle) {
     return {
       ok: false,
       message: "名前を変更する問題がありません。",
@@ -687,6 +788,13 @@ async function renameSelectedViewerProblem(title: string): Promise<{ ok: boolean
 async function moveSelectedViewerProblemDifficulty(
   difficulty: PuzzleDifficulty,
 ): Promise<{ ok: boolean, message: string }> {
+  if (!viewerProblemSelected) {
+    return {
+      ok: false,
+      message: "移動する問題がありません。",
+    }
+  }
+
   if (difficulty === viewerDifficulty) {
     return {
       ok: false,
@@ -746,7 +854,7 @@ async function deleteSelectedViewerProblem(): Promise<{ ok: boolean, message: st
   const puzzles = library[viewerDifficulty]
   const puzzle = puzzles[viewerProblemIndex]
 
-  if (!puzzle) {
+  if (!viewerProblemSelected || !puzzle) {
     return {
       ok: false,
       message: "削除する問題がありません。",
@@ -841,20 +949,24 @@ function playTimerDoneSound() {
   }
 
   const audioContext = new AudioContextClass()
-  const oscillator = audioContext.createOscillator()
-  const gain = audioContext.createGain()
+  const notes = [880, 1046, 1318, 1046]
 
-  oscillator.type = "sine"
-  oscillator.frequency.setValueAtTime(880, audioContext.currentTime)
-  oscillator.frequency.setValueAtTime(660, audioContext.currentTime + 0.16)
-  gain.gain.setValueAtTime(0.0001, audioContext.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.18, audioContext.currentTime + 0.02)
-  gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.45)
+  notes.forEach((frequency, index) => {
+    const start = audioContext.currentTime + index * 0.18
+    const oscillator = audioContext.createOscillator()
+    const gain = audioContext.createGain()
 
-  oscillator.connect(gain)
-  gain.connect(audioContext.destination)
-  oscillator.start()
-  oscillator.stop(audioContext.currentTime + 0.48)
+    oscillator.type = "square"
+    oscillator.frequency.setValueAtTime(frequency, start)
+    gain.gain.setValueAtTime(0.0001, start)
+    gain.gain.exponentialRampToValueAtTime(0.24, start + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14)
+
+    oscillator.connect(gain)
+    gain.connect(audioContext.destination)
+    oscillator.start(start)
+    oscillator.stop(start + 0.16)
+  })
 }
 
 function refreshViewerState() {
@@ -865,13 +977,17 @@ function getViewerPanelState(): ViewerPanelState {
   const puzzles = loadPuzzleLibrary()[viewerDifficulty]
   const problemCount = puzzles.length
   const problemIndex = problemCount === 0 ? 0 : clamp(viewerProblemIndex, 0, problemCount - 1)
-  const selectedPuzzle = problemCount === 0 ? null : puzzles[problemIndex]
+  const selectedPuzzle = problemCount === 0 || !viewerProblemSelected
+    ? null
+    : puzzles[problemIndex]
 
   return {
     difficulty: viewerDifficulty,
-    problemIndex,
+    problemIndex: selectedPuzzle ? problemIndex : 0,
     problemCount,
-    problemTitle: selectedPuzzle?.title ?? "No registered puzzle",
+    problemTitle: selectedPuzzle?.title ?? (
+      problemCount === 0 ? "No registered puzzle" : "No selected puzzle"
+    ),
     selectedPuzzleId: selectedPuzzle?.id ?? null,
     puzzles: puzzles.map((puzzle) => ({
       id: puzzle.id,
@@ -903,7 +1019,7 @@ function formatSeconds(totalSeconds: number): string {
 function loadSelectedViewerPuzzle() {
   const puzzles = loadPuzzleLibrary()[viewerDifficulty]
 
-  if (puzzles.length === 0) {
+  if (puzzles.length === 0 || !viewerProblemSelected) {
     clearPlacedShapes()
     refreshPlacedShapeState()
     return
@@ -1081,11 +1197,18 @@ function updateSelectedPlacedShapeTransform(
     rotation: patch.rotation ?? selectedPlacedShape.rotation,
   }
 
-  if (!isPlacedShapeTransformValid(nextPlacedShape, selectedPlacedShape.id)) {
+  const allowUnsupportedMove = Boolean(patch.origin && !patch.rotation)
+
+  if (!isPlacedShapeTransformValid(
+    nextPlacedShape,
+    selectedPlacedShape.id,
+    { requireSupport: !allowUnsupportedMove },
+  )) {
     updatePositionControls?.(selectedPlacedShape.origin)
     return
   }
 
+  pushUndoState()
   selectedPlacedShape.origin = { ...nextPlacedShape.origin }
   selectedPlacedShape.rotation = { ...nextPlacedShape.rotation }
   rebuildPlacedShapeGroup(selectedPlacedShape)
@@ -1098,6 +1221,7 @@ function updateSelectedPlacedShapeTransform(
 function isPlacedShapeTransformValid(
   placedShape: PlacedShape,
   excludedPlacedShapeId: string,
+  options: { requireSupport: boolean } = { requireSupport: true },
 ): boolean {
   const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)
 
@@ -1108,7 +1232,7 @@ function isPlacedShapeTransformValid(
   const rotatedCells = rotateShapeCells(shape.cells, placedShape.rotation)
   const otherCells = getOccupiedCellsExcluding(excludedPlacedShapeId)
 
-  return isShapeInsideGrid(
+  const isInsideAndClear = isShapeInsideGrid(
     placedShape.origin,
     rotatedCells,
     DEFAULT_GRID_BOUNDS,
@@ -1116,7 +1240,17 @@ function isPlacedShapeTransformValid(
     placedShape.origin,
     rotatedCells,
     otherCells,
-  ) && isShapeSupported(
+  )
+
+  if (!isInsideAndClear) {
+    return false
+  }
+
+  if (!options.requireSupport) {
+    return true
+  }
+
+  return isShapeSupported(
     placedShape.origin,
     rotatedCells,
     otherCells,
@@ -1282,6 +1416,69 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
+function createEditorAxisGuide(): THREE.Group {
+  const group = new THREE.Group()
+  const origin = new THREE.Vector3(-2.75, -2.75, -2.75)
+  const axes = [
+    { label: "X", color: 0xef4444, end: new THREE.Vector3(1.35, 0, 0) },
+    { label: "Y", color: 0x22c55e, end: new THREE.Vector3(0, 1.35, 0) },
+    { label: "Z", color: 0x3b82f6, end: new THREE.Vector3(0, 0, 1.35) },
+  ]
+
+  group.position.copy(origin)
+
+  for (const axis of axes) {
+    const material = new THREE.LineBasicMaterial({
+      color: axis.color,
+      linewidth: 2,
+    })
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      axis.end,
+    ])
+    const line = new THREE.Line(geometry, material)
+    const label = createAxisLabel(axis.label, axis.color)
+
+    label.position.copy(axis.end).multiplyScalar(1.16)
+    group.add(line, label)
+  }
+
+  return group
+}
+
+function createAxisLabel(text: string, color: number): THREE.Sprite {
+  const canvas = document.createElement("canvas")
+  canvas.width = 96
+  canvas.height = 96
+
+  const context = canvas.getContext("2d")
+
+  if (!context) {
+    throw new Error("Canvas context not available")
+  }
+
+  context.clearRect(0, 0, canvas.width, canvas.height)
+  context.fillStyle = `#${color.toString(16).padStart(6, "0")}`
+  context.beginPath()
+  context.arc(48, 48, 30, 0, Math.PI * 2)
+  context.fill()
+  context.fillStyle = "#ffffff"
+  context.font = "700 42px sans-serif"
+  context.textAlign = "center"
+  context.textBaseline = "middle"
+  context.fillText(text, 48, 50)
+
+  const texture = new THREE.CanvasTexture(canvas)
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: texture,
+    depthTest: false,
+  }))
+
+  sprite.scale.setScalar(0.34)
+
+  return sprite
+}
+
 if (shapeDefinitions.length === 0) {
   throw new Error("No shape definitions found")
 }
@@ -1300,6 +1497,7 @@ const shapeSelector = createShapeSelector({
   onMoveProblem: moveViewerProblem,
   onRandomProblem: selectRandomViewerProblem,
   onSelectProblem: selectViewerProblem,
+  onClearViewerProblem: clearViewerProblemSelection,
   onRenameProblem: renameSelectedViewerProblem,
   onMoveProblemDifficulty: moveSelectedViewerProblemDifficulty,
   onDeleteProblem: deleteSelectedViewerProblem,
@@ -1312,6 +1510,9 @@ const shapeSelector = createShapeSelector({
   onResetRotation: resetSelectedRotation,
   onMovePosition: movePreviewOrigin,
   onPlaceShape: placeSelectedShape,
+  onResetBoard: resetEditorBoard,
+  onUndo: undoEditorAction,
+  onRedo: redoEditorAction,
   onDeletePlacedShape: deleteSelectedPlacedShape,
   onEditPlacedShape: editSelectedPlacedShape,
   onExportPuzzle: exportPuzzle,
@@ -1351,6 +1552,7 @@ createGridPointerController({
 })
 
 createPlacedShapeSelectionController()
+createEditorKeyboardController()
 
 clearSelection()
 refreshPlacedShapeState()
@@ -1400,6 +1602,62 @@ function createPlacedShapeSelectionController() {
 
     selectPlacedShape(placedShapeId)
   })
+}
+
+function createEditorKeyboardController() {
+  window.addEventListener("keydown", (event) => {
+    if (isTypingTarget(event.target)) {
+      return
+    }
+
+    if (appMode !== "editor") {
+      return
+    }
+
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      event.preventDefault()
+
+      if (event.shiftKey) {
+        redoEditorAction()
+      } else {
+        undoEditorAction()
+      }
+
+      return
+    }
+
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+      event.preventDefault()
+      redoEditorAction()
+      return
+    }
+
+    if (!selectedPlacedShapeId) {
+      return
+    }
+
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault()
+      deleteSelectedPlacedShape()
+      return
+    }
+
+    if (event.key.toLowerCase() === "e") {
+      event.preventDefault()
+      editSelectedPlacedShape()
+    }
+  })
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  return target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT" ||
+    target.isContentEditable
 }
 
 function getPlacedShapePointerHits(event: PointerEvent | undefined): GridPointerHit[] {
