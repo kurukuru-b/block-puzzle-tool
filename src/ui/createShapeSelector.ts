@@ -1,6 +1,11 @@
 import type { ShapeDefinition } from "../core/shape/ShapeDefinition"
 import type { RotationAxis } from "../core/shape/rotateShapeCells"
 import type { GridPos } from "../core/grid/GridPos"
+import {
+  getShapeDisplayColor,
+  getShapeDisplayLabel,
+  type ShapeColorMode,
+} from "../app/shapeAppearance"
 
 type GridAxis = "x" | "y" | "z"
 type MaybePromise<T> = T | Promise<T>
@@ -46,7 +51,9 @@ type CreateShapeSelectorParams = {
   initialViewerState: ViewerPanelState
   selectedShapeId: string | null
   initialPosition: GridPos
+  initialShapeColorMode: ShapeColorMode
   onModeChange: (mode: AppMode) => void
+  onToggleShapeColorMode: () => void
   onSelect: (shapeId: string) => void
   onClearSelection: () => void
   onSelectPlacedShape: (placedShapeId: string) => void
@@ -94,7 +101,9 @@ export function createShapeSelector({
   initialViewerState,
   selectedShapeId,
   initialPosition,
+  initialShapeColorMode,
   onModeChange,
+  onToggleShapeColorMode,
   onSelect,
   onClearSelection,
   onSelectPlacedShape,
@@ -163,11 +172,25 @@ export function createShapeSelector({
   viewerPanel.className = "shape-selector viewer-panel"
   root.appendChild(viewerPanel)
   let latestViewerState = initialViewerState
+  let latestPlacedShapes: PlacedShapeSummary[] = []
   let problemListSignature = ""
+  let shapeColorMode = initialShapeColorMode
 
   const title = document.createElement("h1")
   title.textContent = "Block Puzzle Tool"
   editorPanel.appendChild(title)
+
+  const shapeColorModeButton = document.createElement("button")
+  shapeColorModeButton.type = "button"
+  shapeColorModeButton.className = "secondary-action-button color-mode-button"
+  shapeColorModeButton.addEventListener("click", () => {
+    shapeColorMode = shapeColorMode === "new" ? "old" : "new"
+    updateShapeColorModeButton()
+    updateShapeButtonAppearances()
+    setPlacedShapes(latestPlacedShapes)
+    onToggleShapeColorMode()
+  })
+  editorPanel.appendChild(shapeColorModeButton)
 
   const clearSelectionButton = document.createElement("button")
   clearSelectionButton.type = "button"
@@ -191,15 +214,15 @@ export function createShapeSelector({
     button.type = "button"
     button.className = "shape-button"
     button.dataset.shapeId = shape.id
-    button.setAttribute("aria-label", `Select ${formatShapeLabel(shape.id)} shape`)
+    button.setAttribute("aria-label", `Select ${getShapeDisplayLabel(shape.id, shapeColorMode)} shape`)
 
     const swatch = document.createElement("span")
     swatch.className = "shape-swatch"
-    swatch.style.backgroundColor = `#${shape.color.toString(16).padStart(6, "0")}`
+    swatch.style.backgroundColor = formatHexColor(getShapeDisplayColor(shape, shapeColorMode))
     button.appendChild(swatch)
 
     const label = document.createElement("span")
-    label.textContent = formatShapeLabel(shape.id)
+    label.textContent = getShapeDisplayLabel(shape.id, shapeColorMode)
     button.appendChild(label)
 
     if (shape.id === selectedShapeId) {
@@ -218,6 +241,8 @@ export function createShapeSelector({
     shapeList.appendChild(button)
     shapeButtons.set(shape.id, button)
   }
+
+  updateShapeColorModeButton()
 
   const rotationControls = document.createElement("div")
   rotationControls.className = "rotation-controls"
@@ -731,6 +756,7 @@ export function createShapeSelector({
   }
 
   function setPlacedShapes(shapes: PlacedShapeSummary[]) {
+    latestPlacedShapes = shapes
     placedCount.textContent = `Placed ${shapes.length}`
     placedList.replaceChildren()
 
@@ -746,7 +772,7 @@ export function createShapeSelector({
       const item = document.createElement("span")
       item.className = "placed-item"
       item.dataset.placedShapeId = shape.id
-      item.textContent = formatShapeLabel(shape.shapeId)
+      item.textContent = getShapeDisplayLabel(shape.shapeId, shapeColorMode)
       item.addEventListener("click", () => onSelectPlacedShape(shape.id))
       placedList.appendChild(item)
     }
@@ -887,22 +913,6 @@ export function createShapeSelector({
     return difficulty[0].toUpperCase() + difficulty.slice(1)
   }
 
-  function formatShapeLabel(shapeId: string): string {
-    if (shapeId === "gray") {
-      return "black"
-    }
-
-    if (shapeId === "purple") {
-      return "silver"
-    }
-
-    if (shapeId === "orange") {
-      return "white"
-    }
-
-    return shapeId
-  }
-
   function setSelectedPlacedShape(id: string | null) {
     selectedControls.classList.toggle("is-visible", id !== null)
     selectedLabel.textContent = id ? `Selected ${id}` : ""
@@ -921,5 +931,42 @@ export function createShapeSelector({
 
     button.disabled = !isAvailable
     button.classList.toggle("is-unavailable", !isAvailable)
+  }
+
+  function updateShapeColorModeButton() {
+    shapeColorModeButton.textContent = shapeColorMode === "new"
+      ? "New Color"
+      : "Old Color"
+    shapeColorModeButton.setAttribute(
+      "aria-label",
+      shapeColorMode === "new" ? "Switch to old colors" : "Switch to new colors",
+    )
+  }
+
+  function updateShapeButtonAppearances() {
+    for (const shape of shapes) {
+      const button = shapeButtons.get(shape.id)
+
+      if (!button) {
+        continue
+      }
+
+      const swatch = button.querySelector<HTMLElement>(".shape-swatch")
+      const label = button.querySelector<HTMLElement>("span:last-child")
+
+      button.setAttribute("aria-label", `Select ${getShapeDisplayLabel(shape.id, shapeColorMode)} shape`)
+
+      if (swatch) {
+        swatch.style.backgroundColor = formatHexColor(getShapeDisplayColor(shape, shapeColorMode))
+      }
+
+      if (label) {
+        label.textContent = getShapeDisplayLabel(shape.id, shapeColorMode)
+      }
+    }
+  }
+
+  function formatHexColor(color: number): string {
+    return `#${color.toString(16).padStart(6, "0")}`
   }
 }

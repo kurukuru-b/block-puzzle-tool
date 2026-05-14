@@ -45,6 +45,10 @@ import {
   type StoredPuzzle,
 } from "./puzzleLibraryStore"
 import { requirePasswordAccess } from "./passwordGate"
+import {
+  getShapeDisplayColor,
+  type ShapeColorMode,
+} from "./shapeAppearance"
 
 await requirePasswordAccess()
 
@@ -73,6 +77,7 @@ let viewerDifficulty: PuzzleDifficulty = "easy"
 let viewerProblemIndex = 0
 let viewerProblemSelected = false
 let viewerColorEnabled = false
+let shapeColorMode: ShapeColorMode = "new"
 let timerMode: TimerMode = "down"
 let timerRunning = false
 let timerElapsedSeconds = 0
@@ -136,7 +141,7 @@ function renderSelectedShape() {
     ...shape,
     cells: rotatedCells,
   }, {
-    color: isValidPlacement ? shape.color : 0xff3344,
+    color: isValidPlacement ? getShapeDisplayColor(shape, shapeColorMode) : 0xff3344,
     opacity: 0.58,
   })
 
@@ -568,7 +573,7 @@ function addPlacedShape(placedShape: PlacedShape) {
     ...shape,
     cells: rotatedCells,
   }, {
-    color: getPlacedShapeColor(shape.color),
+    color: getPlacedShapeColor(shape),
   })
   const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
 
@@ -902,6 +907,12 @@ function toggleViewerColor() {
   viewerColorEnabled = !viewerColorEnabled
   rebuildAllPlacedShapeGroups()
   refreshViewerState()
+}
+
+function toggleShapeColorMode() {
+  shapeColorMode = shapeColorMode === "new" ? "old" : "new"
+  rebuildAllPlacedShapeGroups()
+  renderSelectedShape()
 }
 
 function startStopTimer() {
@@ -1283,7 +1294,7 @@ function rebuildPlacedShapeGroup(placedShape: PlacedShapeRecord) {
     ...shape,
     cells: rotateShapeCells(shape.cells, placedShape.rotation),
   }, {
-    color: getPlacedShapeColor(shape.color),
+    color: getPlacedShapeColor(shape),
   })
   const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
 
@@ -1304,12 +1315,12 @@ function rebuildAllPlacedShapeGroups() {
   }
 }
 
-function getPlacedShapeColor(shapeColor: number): number {
+function getPlacedShapeColor(shape: typeof shapeDefinitions[number]): number {
   if (appMode === "viewer" && !viewerColorEnabled) {
     return 0xd9dee8
   }
 
-  return shapeColor
+  return getShapeDisplayColor(shape, shapeColorMode)
 }
 
 function getOccupiedCellsExcluding(excludedPlacedShapeId: string): Set<string> {
@@ -1502,7 +1513,9 @@ const shapeSelector = createShapeSelector({
   initialViewerState: getViewerPanelState(),
   selectedShapeId,
   initialPosition: previewOrigin,
+  initialShapeColorMode: shapeColorMode,
   onModeChange: setAppMode,
+  onToggleShapeColorMode: toggleShapeColorMode,
   onSelect: selectShape,
   onClearSelection: clearSelection,
   onSelectPlacedShape: selectPlacedShape,

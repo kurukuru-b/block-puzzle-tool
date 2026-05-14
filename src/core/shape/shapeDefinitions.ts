@@ -32,7 +32,7 @@ export const shapeDefinitions: ShapeDefinition[] = [
   },
   {
     id: "purple",
-    color: 0xC8CDD6,
+    color: 0xAEB6C2,
     cells: [
       { x: 0, y: 0, z: 0 },
       { x: 1, y: 0, z: 0 },
@@ -73,7 +73,7 @@ export const shapeDefinitions: ShapeDefinition[] = [
   },
   {
     id: "orange",
-    color: 0xF8FAFC,
+    color: 0xFFFFFF,
     cells: [
       { x: 0, y: 0, z: 0 },
       { x: 1, y: 0, z: 0 },
