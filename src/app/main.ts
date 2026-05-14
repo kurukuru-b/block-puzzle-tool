@@ -43,6 +43,9 @@ import {
   type PuzzleLibrary,
   type StoredPuzzle,
 } from "./puzzleLibraryStore"
+import { requirePasswordAccess } from "./passwordGate"
+
+await requirePasswordAccess()
 
 const mainScene = createMainScene()
 const editorAxisGuide = createEditorAxisGuide()
