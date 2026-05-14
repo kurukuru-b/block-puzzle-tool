@@ -14,4 +14,11 @@ node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/
 node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/src/deletePuzzlesByTitlePrefix.js "Codex Art "
 ```
 
+To create a new named batch:
+
+```powershell
+$env:PUZZLE_LAB_TITLE_PREFIX="Codex Art Trial"
+node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/src/generateArtPuzzles.js
+```
+
 The scripts read Supabase settings from `.env.local`.

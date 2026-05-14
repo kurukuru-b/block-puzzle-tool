@@ -62,10 +62,12 @@ type Candidate = {
   signature: string
 }
 
+const titlePrefix = getTitlePrefix()
+
 const specs: PuzzleSpec[] = [
   {
     difficulty: "easy",
-    title: "Codex Art Easy 1",
+    title: createTitle("Easy", 1),
     pieces: [3, 4],
     minBase: 5,
     minBaseFootprint: 4,
@@ -76,7 +78,7 @@ const specs: PuzzleSpec[] = [
   },
   {
     difficulty: "easy",
-    title: "Codex Art Easy 2",
+    title: createTitle("Easy", 2),
     pieces: [4],
     minBase: 6,
     minBaseFootprint: 5,
@@ -87,7 +89,7 @@ const specs: PuzzleSpec[] = [
   },
   {
     difficulty: "normal",
-    title: "Codex Art Normal 1",
+    title: createTitle("Normal", 1),
     pieces: [5],
     minBase: 7,
     minBaseFootprint: 6,
@@ -97,7 +99,7 @@ const specs: PuzzleSpec[] = [
   },
   {
     difficulty: "normal",
-    title: "Codex Art Normal 2",
+    title: createTitle("Normal", 2),
     pieces: [5, 6],
     minBase: 8,
     minBaseFootprint: 6,
@@ -107,7 +109,7 @@ const specs: PuzzleSpec[] = [
   },
   {
     difficulty: "hard",
-    title: "Codex Art Hard 1",
+    title: createTitle("Hard", 1),
     pieces: [6, 7],
     minBase: 8,
     minBaseFootprint: 6,
@@ -118,7 +120,7 @@ const specs: PuzzleSpec[] = [
   },
   {
     difficulty: "hard",
-    title: "Codex Art Hard 2",
+    title: createTitle("Hard", 2),
     pieces: [7, 8],
     minBase: 9,
     minBaseFootprint: 7,
@@ -129,7 +131,7 @@ const specs: PuzzleSpec[] = [
   },
   {
     difficulty: "challenge",
-    title: "Codex Art Challenge 1",
+    title: createTitle("Challenge", 1),
     pieces: [8, 9],
     minBase: 10,
     minBaseFootprint: 7,
@@ -140,7 +142,7 @@ const specs: PuzzleSpec[] = [
   },
   {
     difficulty: "challenge",
-    title: "Codex Art Challenge 2",
+    title: createTitle("Challenge", 2),
     pieces: [9],
     minBase: 10,
     minBaseFootprint: 8,
@@ -606,6 +608,16 @@ function formatCandidate(title: string, candidate: Candidate): string {
     `symmetry=${metrics.symmetry.toFixed(2)}`,
     `contacts=${metrics.crossContacts}`,
   ].join(" | ")
+}
+
+function getTitlePrefix(): string {
+  const value = process.env.PUZZLE_LAB_TITLE_PREFIX?.trim()
+
+  return value || "Codex Art"
+}
+
+function createTitle(difficultyLabel: string, index: number): string {
+  return `${titlePrefix} ${difficultyLabel} ${index}`
 }
 
 main().catch((error: unknown) => {
