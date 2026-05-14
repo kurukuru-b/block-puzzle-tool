@@ -34,6 +34,7 @@ type PuzzleSpec = {
   maxLevels?: number
   prefersTall?: boolean
   attempts: number
+  minScore: number
 }
 
 type PuzzleMetrics = {
@@ -74,7 +75,8 @@ const specs: PuzzleSpec[] = [
     minFootprint: 5,
     minLevels: 2,
     maxLevels: 4,
-    attempts: 900,
+    attempts: 2400,
+    minScore: 425,
   },
   {
     difficulty: "easy",
@@ -85,7 +87,8 @@ const specs: PuzzleSpec[] = [
     minFootprint: 6,
     minLevels: 2,
     maxLevels: 4,
-    attempts: 900,
+    attempts: 2400,
+    minScore: 425,
   },
   {
     difficulty: "normal",
@@ -95,7 +98,8 @@ const specs: PuzzleSpec[] = [
     minBaseFootprint: 6,
     minFootprint: 8,
     minLevels: 3,
-    attempts: 1200,
+    attempts: 3000,
+    minScore: 450,
   },
   {
     difficulty: "normal",
@@ -105,7 +109,8 @@ const specs: PuzzleSpec[] = [
     minBaseFootprint: 6,
     minFootprint: 8,
     minLevels: 3,
-    attempts: 1200,
+    attempts: 3000,
+    minScore: 460,
   },
   {
     difficulty: "hard",
@@ -116,7 +121,8 @@ const specs: PuzzleSpec[] = [
     minFootprint: 9,
     minLevels: 3,
     prefersTall: true,
-    attempts: 1800,
+    attempts: 4200,
+    minScore: 520,
   },
   {
     difficulty: "hard",
@@ -127,7 +133,8 @@ const specs: PuzzleSpec[] = [
     minFootprint: 10,
     minLevels: 3,
     prefersTall: true,
-    attempts: 2000,
+    attempts: 4200,
+    minScore: 530,
   },
   {
     difficulty: "challenge",
@@ -138,7 +145,8 @@ const specs: PuzzleSpec[] = [
     minFootprint: 11,
     minLevels: 4,
     prefersTall: true,
-    attempts: 2200,
+    attempts: 4800,
+    minScore: 550,
   },
   {
     difficulty: "challenge",
@@ -149,7 +157,8 @@ const specs: PuzzleSpec[] = [
     minFootprint: 12,
     minLevels: 4,
     prefersTall: true,
-    attempts: 2500,
+    attempts: 5200,
+    minScore: 550,
   },
 ]
 
@@ -246,7 +255,7 @@ function generateCandidate(spec: PuzzleSpec, usedSignatures: Set<string>): Candi
     const metrics = getMetrics(placedShapes)
     const score = scoreCandidate(metrics, spec)
 
-    if (score === null) {
+    if (score === null || score < spec.minScore) {
       continue
     }
 
