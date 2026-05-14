@@ -140,8 +140,19 @@ export function createShapeSelector({
   })
   root.appendChild(uiToggleButton)
 
-  const timerOverlay = document.createElement("span")
+  const timerOverlay = document.createElement("div")
   timerOverlay.className = "timer-overlay"
+
+  const timerOverlayButton = document.createElement("button")
+  timerOverlayButton.type = "button"
+  timerOverlayButton.className = "timer-overlay-button"
+  timerOverlayButton.addEventListener("click", onTimerStartStop)
+  timerOverlay.appendChild(timerOverlayButton)
+
+  const timerOverlayText = document.createElement("span")
+  timerOverlayText.className = "timer-overlay-text"
+  timerOverlay.appendChild(timerOverlayText)
+
   root.appendChild(timerOverlay)
 
   const editorPanel = document.createElement("section")
@@ -180,7 +191,7 @@ export function createShapeSelector({
     button.type = "button"
     button.className = "shape-button"
     button.dataset.shapeId = shape.id
-    button.setAttribute("aria-label", `Select ${shape.id} shape`)
+    button.setAttribute("aria-label", `Select ${formatShapeLabel(shape.id)} shape`)
 
     const swatch = document.createElement("span")
     swatch.className = "shape-swatch"
@@ -188,7 +199,7 @@ export function createShapeSelector({
     button.appendChild(swatch)
 
     const label = document.createElement("span")
-    label.textContent = shape.id
+    label.textContent = formatShapeLabel(shape.id)
     button.appendChild(label)
 
     if (shape.id === selectedShapeId) {
@@ -735,7 +746,7 @@ export function createShapeSelector({
       const item = document.createElement("span")
       item.className = "placed-item"
       item.dataset.placedShapeId = shape.id
-      item.textContent = shape.shapeId
+      item.textContent = formatShapeLabel(shape.shapeId)
       item.addEventListener("click", () => onSelectPlacedShape(shape.id))
       placedList.appendChild(item)
     }
@@ -789,7 +800,9 @@ export function createShapeSelector({
     colorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
     colorButton.classList.toggle("is-selected", state.colorEnabled)
     timerLabel.textContent = state.timerText
-    timerOverlay.textContent = state.timerText
+    timerOverlayText.textContent = state.timerText
+    timerOverlayButton.textContent = state.timerRunning ? "Stop" : "Start"
+    timerOverlayButton.setAttribute("aria-label", state.timerRunning ? "Stop timer" : "Start timer")
     timerOverlay.classList.toggle("is-running", state.timerRunning)
     timerPanel.classList.toggle("is-running", state.timerRunning)
     timerStartStopButton.textContent = state.timerRunning ? "Stop" : "Start"
@@ -872,6 +885,22 @@ export function createShapeSelector({
 
   function formatDifficulty(difficulty: PuzzleDifficulty): string {
     return difficulty[0].toUpperCase() + difficulty.slice(1)
+  }
+
+  function formatShapeLabel(shapeId: string): string {
+    if (shapeId === "gray") {
+      return "black"
+    }
+
+    if (shapeId === "purple") {
+      return "silver"
+    }
+
+    if (shapeId === "orange") {
+      return "white"
+    }
+
+    return shapeId
   }
 
   function setSelectedPlacedShape(id: string | null) {

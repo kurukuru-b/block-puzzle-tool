@@ -3,7 +3,7 @@ import type { ShapeDefinition } from "./ShapeDefinition"
 export const shapeDefinitions: ShapeDefinition[] = [
   {
     id: "gray",
-    color: 0x8A8A8A,
+    color: 0x1F2933,
     cells: [
       { x: 0, y: 0, z: 0 },
       { x: 1, y: 0, z: 0 },
@@ -32,7 +32,7 @@ export const shapeDefinitions: ShapeDefinition[] = [
   },
   {
     id: "purple",
-    color: 0x9B6BFF,
+    color: 0xC8CDD6,
     cells: [
       { x: 0, y: 0, z: 0 },
       { x: 1, y: 0, z: 0 },
@@ -73,7 +73,7 @@ export const shapeDefinitions: ShapeDefinition[] = [
   },
   {
     id: "orange",
-    color: 0xFF9F43,
+    color: 0xF8FAFC,
     cells: [
       { x: 0, y: 0, z: 0 },
       { x: 1, y: 0, z: 0 },
