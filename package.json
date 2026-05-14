@@ -7,7 +7,8 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "puzzle-lab:build": "tsc -p external-tools/puzzle-lab/tsconfig.json && node external-tools/puzzle-lab/scripts/writeDistPackage.cjs"
   },
   "devDependencies": {
     "@types/three": "^0.184.0",

@@ -1,0 +1,83 @@
+import type { PuzzleExport } from "../../../src/core/puzzle/PuzzleExport"
+import type { SupabaseEnv } from "./env"
+
+export type PuzzleDifficulty = "easy" | "normal" | "hard" | "challenge"
+
+export type SupabasePuzzleRow = {
+  id: string
+  difficulty: PuzzleDifficulty
+  title: string
+  grid: PuzzleExport["grid"]
+  placed_shapes: PuzzleExport["placedShapes"]
+}
+
+export function createSupabaseClient(env: SupabaseEnv) {
+  const restUrl = `${env.url.replace(/\/$/, "")}/rest/v1/${env.table}`
+  const headers = {
+    apikey: env.key,
+    Authorization: `Bearer ${env.key}`,
+    "Content-Type": "application/json",
+  }
+
+  return {
+    async fetchPuzzles(): Promise<SupabasePuzzleRow[]> {
+      return request<SupabasePuzzleRow[]>(
+        `${restUrl}?select=id,difficulty,title,grid,placed_shapes`,
+        { method: "GET" },
+      )
+    },
+
+    async insertPuzzles(rows: SupabasePuzzleRow[]): Promise<void> {
+      if (rows.length === 0) {
+        return
+      }
+
+      await request(`${restUrl}`, {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify(rows),
+      })
+    },
+
+    async deleteByTitlePrefix(prefix: string): Promise<number> {
+      const rows = await request<{ id: string }[]>(
+        `${restUrl}?select=id&title=like.${encodeURIComponent(`${prefix}%`)}`,
+        { method: "GET" },
+      )
+
+      if (rows.length === 0) {
+        return 0
+      }
+
+      await request(
+        `${restUrl}?title=like.${encodeURIComponent(`${prefix}%`)}`,
+        {
+          method: "DELETE",
+          headers: { Prefer: "return=minimal" },
+        },
+      )
+
+      return rows.length
+    },
+  }
+
+  async function request<T = unknown>(
+    url: string,
+    options: RequestInit,
+  ): Promise<T> {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...headers,
+        ...options.headers,
+      },
+    })
+    const body = await response.text()
+
+    if (!response.ok) {
+      throw new Error(body || `Supabase request failed: ${response.status}`)
+    }
+
+    return body ? JSON.parse(body) as T : undefined as T
+  }
+}
