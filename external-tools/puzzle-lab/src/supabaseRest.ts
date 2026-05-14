@@ -48,6 +48,18 @@ export function createSupabaseClient(env: SupabaseEnv) {
       })
     },
 
+    async upsertPuzzleBackupRows(rows: SupabasePuzzleBackupRow[]): Promise<void> {
+      if (rows.length === 0) {
+        return
+      }
+
+      await request(`${restUrl}?on_conflict=id`, {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(rows),
+      })
+    },
+
     async deleteByTitlePrefix(prefix: string): Promise<number> {
       const rows = await request<{ id: string }[]>(
         `${restUrl}?select=id&title=like.${encodeURIComponent(`${prefix}%`)}`,
