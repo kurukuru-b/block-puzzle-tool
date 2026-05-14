@@ -1,23 +1,10 @@
-import fs from "node:fs"
-import path from "node:path"
 import { loadSupabaseEnv } from "./env"
+import { createSupabaseClient } from "./supabaseRest"
 import {
-  createSupabaseClient,
-  type SupabasePuzzleBackupRow,
-} from "./supabaseRest"
-
-type BackupFile = {
-  version: 1
-  exportedAt: string
-  source: {
-    table: string
-  }
-  summary: {
-    total: number
-    byDifficulty: Record<string, number>
-  }
-  rows: unknown[]
-}
+  getDifficultyCounts,
+  parseBackupRows,
+  readBackupFile,
+} from "./backupFile"
 
 type RestoreOptions = {
   backupPath: string
@@ -27,7 +14,7 @@ type RestoreOptions = {
 async function main() {
   const options = getRestoreOptions()
   const backup = readBackupFile(options.backupPath)
-  const rows = backup.rows.map(parseBackupRow)
+  const rows = parseBackupRows(backup)
   const env = loadSupabaseEnv()
   const client = createSupabaseClient(env)
 
@@ -52,7 +39,7 @@ function getRestoreOptions(): RestoreOptions {
 
   if (!backupPath) {
     throw new Error(
-      "Usage: npm run puzzle-lab:restore -- external-tools/puzzle-lab/backups/puzzles-...json [--apply]",
+      "Usage: npm run puzzle-lab:restore -- <backup-file|latest> [--apply]",
     )
   }
 
@@ -60,79 +47,6 @@ function getRestoreOptions(): RestoreOptions {
     backupPath,
     apply,
   }
-}
-
-function readBackupFile(backupPath: string): BackupFile {
-  const resolvedPath = path.resolve(backupPath)
-
-  if (!fs.existsSync(resolvedPath)) {
-    throw new Error(`Backup file was not found: ${resolvedPath}`)
-  }
-
-  const parsed = JSON.parse(fs.readFileSync(resolvedPath, "utf8")) as unknown
-
-  if (!isBackupFile(parsed)) {
-    throw new Error("Backup file format is invalid.")
-  }
-
-  return parsed
-}
-
-function parseBackupRow(value: unknown): SupabasePuzzleBackupRow {
-  if (!isRecord(value)) {
-    throw new Error("Backup row must be an object.")
-  }
-
-  if (
-    typeof value.id !== "string" ||
-    !isDifficulty(value.difficulty) ||
-    typeof value.title !== "string" ||
-    !isRecord(value.grid) ||
-    !Array.isArray(value.placed_shapes)
-  ) {
-    throw new Error(`Backup row is missing required puzzle fields: ${String(value.id)}`)
-  }
-
-  return value as SupabasePuzzleBackupRow
-}
-
-function isBackupFile(value: unknown): value is BackupFile {
-  return (
-    isRecord(value) &&
-    value.version === 1 &&
-    typeof value.exportedAt === "string" &&
-    isRecord(value.source) &&
-    typeof value.source.table === "string" &&
-    isRecord(value.summary) &&
-    typeof value.summary.total === "number" &&
-    isRecord(value.summary.byDifficulty) &&
-    Array.isArray(value.rows)
-  )
-}
-
-function getDifficultyCounts(rows: Array<{ difficulty?: unknown }>): Record<string, number> {
-  const counts: Record<string, number> = {}
-
-  for (const row of rows) {
-    const difficulty = typeof row.difficulty === "string"
-      ? row.difficulty
-      : "unknown"
-
-    counts[difficulty] = (counts[difficulty] ?? 0) + 1
-  }
-
-  return counts
-}
-
-function isDifficulty(value: unknown): boolean {
-  return value === "easy" ||
-    value === "normal" ||
-    value === "hard" ||
-    value === "challenge"
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
 }
 
 main().catch((error: unknown) => {

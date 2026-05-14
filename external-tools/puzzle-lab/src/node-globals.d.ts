@@ -14,6 +14,7 @@ declare module "node:fs" {
     existsSync(path: string): boolean
     mkdirSync(path: string, options?: { recursive?: boolean }): void
     readFileSync(path: string, encoding: string): string
+    readdirSync(path: string): string[]
     writeFileSync(path: string, data: string): void
   }
 

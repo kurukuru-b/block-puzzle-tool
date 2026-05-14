@@ -11,6 +11,8 @@ are not part of the browser app itself. The scripts import shared logic from
 ```powershell
 npm run puzzle-lab:build
 npm run puzzle-lab:backup
+npm run puzzle-lab:restore -- latest
+npm run puzzle-lab:restore -- latest --apply
 npm run puzzle-lab:restore -- external-tools/puzzle-lab/backups/puzzles-YYYY-MM-DDTHH-MM-SS-ZZZZ.json
 npm run puzzle-lab:restore -- external-tools/puzzle-lab/backups/puzzles-YYYY-MM-DDTHH-MM-SS-ZZZZ.json --apply
 node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/src/generateArtPuzzles.js
