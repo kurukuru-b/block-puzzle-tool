@@ -37,6 +37,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_SUPABASE_PUZZLE_TABLE: ${{ vars.VITE_SUPABASE_PUZZLE_TABLE || 'puzzles' }}
+          VITE_APP_PASSWORD: ${{ vars.VITE_APP_PASSWORD }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
