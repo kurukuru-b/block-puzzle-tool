@@ -10,6 +10,7 @@ are not part of the browser app itself. The scripts import shared logic from
 
 ```powershell
 npm run puzzle-lab:build
+npm run puzzle-lab:backup
 node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/src/generateArtPuzzles.js
 node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/src/deletePuzzlesByTitlePrefix.js "Codex Art "
 ```
@@ -22,3 +23,6 @@ node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/
 ```
 
 The scripts read Supabase settings from `.env.local`.
+
+Backups are written to `external-tools/puzzle-lab/backups/` and are ignored by
+Git.

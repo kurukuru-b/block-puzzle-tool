@@ -11,6 +11,8 @@ export type SupabasePuzzleRow = {
   placed_shapes: PuzzleExport["placedShapes"]
 }
 
+export type SupabasePuzzleBackupRow = SupabasePuzzleRow & Record<string, unknown>
+
 export function createSupabaseClient(env: SupabaseEnv) {
   const restUrl = `${env.url.replace(/\/$/, "")}/rest/v1/${env.table}`
   const headers = {
@@ -23,6 +25,13 @@ export function createSupabaseClient(env: SupabaseEnv) {
     async fetchPuzzles(): Promise<SupabasePuzzleRow[]> {
       return request<SupabasePuzzleRow[]>(
         `${restUrl}?select=id,difficulty,title,grid,placed_shapes`,
+        { method: "GET" },
+      )
+    },
+
+    async fetchPuzzleBackupRows(): Promise<SupabasePuzzleBackupRow[]> {
+      return request<SupabasePuzzleBackupRow[]>(
+        `${restUrl}?select=*&order=created_at.asc`,
         { method: "GET" },
       )
     },

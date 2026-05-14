@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+external-tools/puzzle-lab/backups/
 *.local
 .env
 .env.*

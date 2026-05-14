@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "puzzle-lab:build": "tsc -p external-tools/puzzle-lab/tsconfig.json && node external-tools/puzzle-lab/scripts/writeDistPackage.cjs"
+    "puzzle-lab:build": "tsc -p external-tools/puzzle-lab/tsconfig.json && node external-tools/puzzle-lab/scripts/writeDistPackage.cjs",
+    "puzzle-lab:backup": "npm run puzzle-lab:build && node --use-system-ca external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/src/backupPuzzles.js"
   },
   "devDependencies": {
     "@types/three": "^0.184.0",

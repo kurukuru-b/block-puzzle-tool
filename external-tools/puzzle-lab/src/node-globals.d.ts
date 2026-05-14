@@ -12,7 +12,9 @@ declare const console: {
 declare module "node:fs" {
   const fs: {
     existsSync(path: string): boolean
+    mkdirSync(path: string, options?: { recursive?: boolean }): void
     readFileSync(path: string, encoding: string): string
+    writeFileSync(path: string, data: string): void
   }
 
   export default fs
@@ -20,6 +22,7 @@ declare module "node:fs" {
 
 declare module "node:path" {
   const path: {
+    join(...paths: string[]): string
     resolve(...paths: string[]): string
   }
 
