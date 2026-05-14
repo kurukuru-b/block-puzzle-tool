@@ -152,6 +152,7 @@ export function createShapeSelector({
   viewerPanel.className = "shape-selector viewer-panel"
   root.appendChild(viewerPanel)
   let latestViewerState = initialViewerState
+  let problemListSignature = ""
 
   const title = document.createElement("h1")
   title.textContent = "Block Puzzle Tool"
@@ -783,7 +784,7 @@ export function createShapeSelector({
     moveDifficultySelect.disabled = state.selectedPuzzleId === null
     updateMoveProblemButtonState()
 
-    rebuildProblemList(state)
+    rebuildProblemListIfNeeded(state)
 
     colorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
     colorButton.classList.toggle("is-selected", state.colorEnabled)
@@ -808,6 +809,17 @@ export function createShapeSelector({
   function updateMoveProblemButtonState() {
     moveProblemButton.disabled = latestViewerState.selectedPuzzleId === null ||
       moveDifficultySelect.value === latestViewerState.difficulty
+  }
+
+  function rebuildProblemListIfNeeded(state: ViewerPanelState) {
+    const nextSignature = getProblemListSignature(state)
+
+    if (nextSignature === problemListSignature) {
+      return
+    }
+
+    problemListSignature = nextSignature
+    rebuildProblemList(state)
   }
 
   function rebuildProblemList(state: ViewerPanelState) {
@@ -849,6 +861,13 @@ export function createShapeSelector({
     })
 
     problemList.scrollTop = previousScrollTop
+  }
+
+  function getProblemListSignature(state: ViewerPanelState): string {
+    return [
+      state.selectedPuzzleId ?? "",
+      ...state.puzzles.map((puzzle) => `${puzzle.id}:${puzzle.title}`),
+    ].join("|")
   }
 
   function formatDifficulty(difficulty: PuzzleDifficulty): string {

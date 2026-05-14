@@ -3,6 +3,7 @@ import "../style.css"
 import * as THREE from "three"
 
 import { createMainScene } from "../render/scene/createMainScene"
+import { disposeObject3D } from "../render/scene/disposeObject3D"
 import { shapeDefinitions } from "../core/shape/shapeDefinitions"
 import { createShapeMeshGroup } from "../render/shape/createShapeMeshGroup"
 import { gridToWorld } from "../render/scene/gridToWorld"
@@ -95,11 +96,14 @@ const placedShapes: PlacedShapeRecord[] = []
 const occupiedCells = new Set<string>()
 const undoStack: PlacedShapeSnapshot[] = []
 const redoStack: PlacedShapeSnapshot[] = []
+const placedShapeRaycaster = new THREE.Raycaster()
+const placedShapePointer = new THREE.Vector2()
 let isApplyingHistory = false
 
 function renderSelectedShape() {
   if (activeShapeGroup) {
     mainScene.scene.remove(activeShapeGroup)
+    disposeObject3D(activeShapeGroup)
     activeShapeGroup = null
   }
 
@@ -545,6 +549,7 @@ function removePlacedShape(placedShapeId: string) {
   const [placedShape] = placedShapes.splice(index, 1)
 
   mainScene.scene.remove(placedShape.group)
+  disposeObject3D(placedShape.group)
   rebuildOccupiedCells()
 }
 
@@ -590,6 +595,7 @@ function addPlacedShape(placedShape: PlacedShape) {
 function clearPlacedShapes() {
   for (const placedShape of placedShapes) {
     mainScene.scene.remove(placedShape.group)
+    disposeObject3D(placedShape.group)
   }
 
   placedShapes.length = 0
@@ -1271,6 +1277,7 @@ function rebuildPlacedShapeGroup(placedShape: PlacedShapeRecord) {
   }
 
   mainScene.scene.remove(placedShape.group)
+  disposeObject3D(placedShape.group)
 
   const placedGroup = createShapeMeshGroup({
     ...shape,
@@ -1671,18 +1678,12 @@ function getPlacedShapePointerHits(event: PointerEvent | undefined): GridPointer
     return []
   }
 
-  const raycaster = new THREE.Raycaster()
-  const pointer = new THREE.Vector2()
-  const rect = mainScene.renderer.domElement.getBoundingClientRect()
-
-  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-  raycaster.setFromCamera(pointer, mainScene.camera)
+  updatePlacedShapeRaycaster(event)
 
   const placedMeshes = placedShapes.flatMap((shape) => (
     shape.group.children
   ))
-  const intersections = raycaster.intersectObjects(placedMeshes, false)
+  const intersections = placedShapeRaycaster.intersectObjects(placedMeshes, false)
 
   return intersections.flatMap((intersection) => {
     const placedShapeId = intersection.object.userData.placedShapeId
@@ -1719,21 +1720,23 @@ function getPlacedShapePointerHits(event: PointerEvent | undefined): GridPointer
 }
 
 function getPlacedShapeIdAtPointer(event: PointerEvent): string | null {
-  const raycaster = new THREE.Raycaster()
-  const pointer = new THREE.Vector2()
-  const rect = mainScene.renderer.domElement.getBoundingClientRect()
-
-  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-  raycaster.setFromCamera(pointer, mainScene.camera)
+  updatePlacedShapeRaycaster(event)
 
   const placedMeshes = placedShapes.flatMap((shape) => (
     shape.group.children
   ))
-  const intersections = raycaster.intersectObjects(placedMeshes, false)
+  const intersections = placedShapeRaycaster.intersectObjects(placedMeshes, false)
   const placedShapeId = intersections[0]?.object.userData.placedShapeId
 
   return typeof placedShapeId === "string" ? placedShapeId : null
+}
+
+function updatePlacedShapeRaycaster(event: PointerEvent) {
+  const rect = mainScene.renderer.domElement.getBoundingClientRect()
+
+  placedShapePointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+  placedShapePointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  placedShapeRaycaster.setFromCamera(placedShapePointer, mainScene.camera)
 }
 
 function getPointerDistance(
