@@ -15,7 +15,9 @@ npm run puzzle-lab:restore -- latest
 npm run puzzle-lab:restore -- latest --apply
 npm run puzzle-lab:restore -- external-tools/puzzle-lab/backups/puzzles-YYYY-MM-DDTHH-MM-SS-ZZZZ.json
 npm run puzzle-lab:restore -- external-tools/puzzle-lab/backups/puzzles-YYYY-MM-DDTHH-MM-SS-ZZZZ.json --apply
-node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/src/generateArtPuzzles.js
+npm run puzzle-lab:generate
+npm run puzzle-lab:generate -- --dry-run
+npm run puzzle-lab:generate -- --cohesion 60 --stability 65 --artistry 45
 node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/src/deletePuzzlesByTitlePrefix.js "Codex Art "
 ```
 
@@ -23,8 +25,31 @@ To create a new named batch:
 
 ```powershell
 $env:PUZZLE_LAB_TITLE_PREFIX="Codex Art Trial"
-node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/src/generateArtPuzzles.js
+npm run puzzle-lab:generate
 ```
+
+Generated puzzle candidates are scored on three 0-100 axes:
+
+- `cohesion`: how strongly the pieces feel connected as one shape.
+- `stability`: how comfortable the puzzle should be to build physically.
+- `artistry`: a heuristic for symmetry, rhythm, height variation, and composition.
+
+Thresholds can be set with command flags:
+
+```powershell
+npm run puzzle-lab:generate -- --cohesion 60 --stability 65 --artistry 45
+```
+
+Or with environment variables:
+
+```powershell
+$env:PUZZLE_LAB_MIN_COHESION="60"
+$env:PUZZLE_LAB_MIN_STABILITY="65"
+$env:PUZZLE_LAB_MIN_ARTISTRY="45"
+npm run puzzle-lab:generate
+```
+
+Use `--attempts-multiplier 2` when stricter thresholds need a wider search.
 
 The scripts read Supabase settings from `.env.local`.
 

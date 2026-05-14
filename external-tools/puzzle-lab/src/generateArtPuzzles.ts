@@ -16,6 +16,13 @@ import {
   type SupabasePuzzleRow,
 } from "./supabaseRest"
 import { getPuzzleCellKeys, validatePuzzleExport } from "./puzzleValidation"
+import {
+  meetsScoreThresholds,
+  scorePuzzle,
+  type PuzzleMetrics,
+  type PuzzleScore,
+  type PuzzleScoreThresholds,
+} from "./puzzleScoring"
 
 type ShapeVariant = {
   shapeId: string
@@ -32,38 +39,25 @@ type PuzzleSpec = {
   minFootprint: number
   minLevels: number
   maxLevels?: number
-  prefersTall?: boolean
   attempts: number
-  minScore: number
+  thresholds: PuzzleScoreThresholds
 }
 
-type PuzzleMetrics = {
-  cellCount: number
-  pieceCount: number
-  crossContacts: number
-  verticalContacts: number
-  baseCount: number
-  baseFootprint: number
-  footprint: number
-  levels: number
-  maxY: number
-  dx: number
-  dz: number
-  volume: number
-  density: number
-  centerPenalty: number
-  symmetry: number
-  heightVariance: number
+type GeneratorOptions = {
+  dryRun: boolean
+  attemptsMultiplier: number
+  thresholds: Partial<PuzzleScoreThresholds>
 }
 
 type Candidate = {
   placedShapes: PlacedShape[]
   metrics: PuzzleMetrics
-  score: number
+  scores: PuzzleScore
   signature: string
 }
 
 const titlePrefix = getTitlePrefix()
+const options = getGeneratorOptions()
 
 const specs: PuzzleSpec[] = [
   {
@@ -76,7 +70,7 @@ const specs: PuzzleSpec[] = [
     minLevels: 2,
     maxLevels: 4,
     attempts: 2400,
-    minScore: 425,
+    thresholds: createThresholds({ cohesion: 48, stability: 62, artistry: 32 }),
   },
   {
     difficulty: "easy",
@@ -88,7 +82,7 @@ const specs: PuzzleSpec[] = [
     minLevels: 2,
     maxLevels: 4,
     attempts: 2400,
-    minScore: 425,
+    thresholds: createThresholds({ cohesion: 50, stability: 64, artistry: 34 }),
   },
   {
     difficulty: "normal",
@@ -99,7 +93,7 @@ const specs: PuzzleSpec[] = [
     minFootprint: 8,
     minLevels: 3,
     attempts: 3000,
-    minScore: 450,
+    thresholds: createThresholds({ cohesion: 54, stability: 64, artistry: 38 }),
   },
   {
     difficulty: "normal",
@@ -110,7 +104,7 @@ const specs: PuzzleSpec[] = [
     minFootprint: 8,
     minLevels: 3,
     attempts: 3000,
-    minScore: 460,
+    thresholds: createThresholds({ cohesion: 56, stability: 64, artistry: 40 }),
   },
   {
     difficulty: "hard",
@@ -120,9 +114,8 @@ const specs: PuzzleSpec[] = [
     minBaseFootprint: 6,
     minFootprint: 9,
     minLevels: 3,
-    prefersTall: true,
     attempts: 4200,
-    minScore: 520,
+    thresholds: createThresholds({ cohesion: 58, stability: 62, artistry: 45 }),
   },
   {
     difficulty: "hard",
@@ -132,9 +125,8 @@ const specs: PuzzleSpec[] = [
     minBaseFootprint: 7,
     minFootprint: 10,
     minLevels: 3,
-    prefersTall: true,
     attempts: 4200,
-    minScore: 530,
+    thresholds: createThresholds({ cohesion: 60, stability: 62, artistry: 46 }),
   },
   {
     difficulty: "challenge",
@@ -144,9 +136,8 @@ const specs: PuzzleSpec[] = [
     minBaseFootprint: 7,
     minFootprint: 11,
     minLevels: 4,
-    prefersTall: true,
     attempts: 4800,
-    minScore: 550,
+    thresholds: createThresholds({ cohesion: 62, stability: 60, artistry: 48 }),
   },
   {
     difficulty: "challenge",
@@ -156,9 +147,8 @@ const specs: PuzzleSpec[] = [
     minBaseFootprint: 8,
     minFootprint: 12,
     minLevels: 4,
-    prefersTall: true,
     attempts: 5200,
-    minScore: 550,
+    thresholds: createThresholds({ cohesion: 64, stability: 60, artistry: 50 }),
   },
 ]
 
@@ -218,6 +208,11 @@ async function main() {
     console.log(formatCandidate(spec.title, candidate))
   }
 
+  if (options.dryRun) {
+    console.log(`Dry run only. Generated ${rows.length} puzzle(s), inserted 0.`)
+    return
+  }
+
   await client.insertPuzzles(rows)
 
   console.log(`Inserted ${rows.length} puzzle(s).`)
@@ -225,8 +220,9 @@ async function main() {
 
 function generateCandidate(spec: PuzzleSpec, usedSignatures: Set<string>): Candidate {
   const candidates: Candidate[] = []
+  const attempts = Math.max(1, Math.round(spec.attempts * options.attemptsMultiplier))
 
-  for (let index = 0; index < spec.attempts; index += 1) {
+  for (let index = 0; index < attempts; index += 1) {
     const pieceCount = randomItem(spec.pieces)
     const placedShapes = buildPuzzle(pieceCount)
 
@@ -252,25 +248,31 @@ function generateCandidate(spec: PuzzleSpec, usedSignatures: Set<string>): Candi
       continue
     }
 
-    const metrics = getMetrics(placedShapes)
-    const score = scoreCandidate(metrics, spec)
+    const result = scorePuzzle(placedShapes)
 
-    if (score === null || score < spec.minScore) {
+    if (!passesShapeFilters(result.metrics, spec)) {
+      continue
+    }
+
+    if (!meetsScoreThresholds(result.scores, spec.thresholds)) {
       continue
     }
 
     candidates.push({
       placedShapes,
-      metrics,
-      score,
+      metrics: result.metrics,
+      scores: result.scores,
       signature: currentSignature,
     })
   }
 
-  candidates.sort((a, b) => b.score - a.score)
+  candidates.sort((a, b) => b.scores.overall - a.scores.overall)
 
   if (!candidates[0]) {
-    throw new Error(`Could not generate puzzle: ${spec.title}`)
+    throw new Error(
+      `Could not generate puzzle: ${spec.title} ` +
+      `(thresholds ${formatThresholds(spec.thresholds)}, attempts ${attempts})`,
+    )
   }
 
   return candidates[0]
@@ -397,145 +399,12 @@ function canPlaceWithPhysicalSupport(
   return true
 }
 
-function scoreCandidate(metrics: PuzzleMetrics, spec: PuzzleSpec): number | null {
-  if (
-    metrics.baseCount < spec.minBase ||
-    metrics.baseFootprint < spec.minBaseFootprint ||
-    metrics.footprint < spec.minFootprint ||
-    metrics.levels < spec.minLevels ||
-    (spec.maxLevels !== undefined && metrics.levels > spec.maxLevels)
-  ) {
-    return null
-  }
-
-  const balancedSpan = 1 - Math.abs(metrics.dx - metrics.dz) / 5
-  const baseComfort = Math.min(1, metrics.baseFootprint / Math.max(4, metrics.footprint * 0.55))
-  const verticalPresence = Math.min(1, (metrics.levels - 1) / 4 + metrics.verticalContacts / 30)
-  const cohesion = Math.min(1, metrics.crossContacts / Math.max(1, metrics.pieceCount * 2.1))
-  const center = Math.max(0, 1 - metrics.centerPenalty / 3.4)
-  const rhythm = Math.min(1, metrics.heightVariance / 1.6)
-  const density = Math.max(0, 1 - Math.abs(metrics.density - 0.55))
-  const tallBonus = spec.prefersTall ? Math.min(35, metrics.maxY * 9 + metrics.levels * 3) : 0
-  const crowdPenalty = metrics.volume > 90 ? (metrics.volume - 90) * 0.8 : 0
-
-  return (
-    metrics.symmetry * 90 +
-    balancedSpan * 45 +
-    baseComfort * 55 +
-    verticalPresence * 70 +
-    cohesion * 62 +
-    center * 50 +
-    rhythm * 42 +
-    density * 28 +
-    metrics.crossContacts * 2.6 +
-    metrics.verticalContacts * 1.5 +
-    tallBonus -
-    crowdPenalty
-  )
-}
-
-function getMetrics(placedShapes: PlacedShape[]): PuzzleMetrics {
-  const cells = getCellPositions(placedShapes)
-  const cellKeys = new Set(cells.map(gridPosKey))
-  const ownerByCell = new Map<string, string>()
-
-  for (const placedShape of placedShapes) {
-    for (const pos of getCellPositions([placedShape])) {
-      ownerByCell.set(gridPosKey(pos), placedShape.shapeId)
-    }
-  }
-
-  const xs = cells.map((cell) => cell.x)
-  const ys = cells.map((cell) => cell.y)
-  const zs = cells.map((cell) => cell.z)
-  const minX = Math.min(...xs)
-  const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
-  const minZ = Math.min(...zs)
-  const maxZ = Math.max(...zs)
-  let crossContacts = 0
-  let verticalContacts = 0
-
-  for (const cell of cells) {
-    for (const neighbor of [
-      { x: cell.x + 1, y: cell.y, z: cell.z },
-      { x: cell.x, y: cell.y + 1, z: cell.z },
-      { x: cell.x, y: cell.y, z: cell.z + 1 },
-    ]) {
-      const neighborKey = gridPosKey(neighbor)
-
-      if (!cellKeys.has(neighborKey)) {
-        continue
-      }
-
-      if (ownerByCell.get(neighborKey) !== cell.shapeId) {
-        crossContacts += 1
-      }
-
-      if (neighbor.y !== cell.y) {
-        verticalContacts += 1
-      }
-    }
-  }
-
-  const baseCells = cells.filter((cell) => cell.y === 0)
-  const footprint = new Set(cells.map((cell) => `${cell.x},${cell.z}`))
-  const baseFootprint = new Set(baseCells.map((cell) => `${cell.x},${cell.z}`))
-  const levels = new Set(cells.map((cell) => cell.y))
-  const columns = new Map<string, number>()
-
-  for (const cell of cells) {
-    const key = `${cell.x},${cell.z}`
-    columns.set(key, Math.max(columns.get(key) ?? 0, cell.y + 1))
-  }
-
-  const columnHeights = [...columns.values()]
-  const averageHeight = columnHeights.reduce((sum, height) => sum + height, 0) /
-    columnHeights.length
-  const heightVariance = columnHeights.reduce(
-    (sum, height) => sum + Math.abs(height - averageHeight),
-    0,
-  ) / columnHeights.length
-  const centerPenalty = cells.reduce(
-    (sum, cell) => sum + Math.abs(cell.x - 2) + Math.abs(cell.z - 2),
-    0,
-  ) / cells.length
-  const mirrorX = cells.filter((cell) => cellKeys.has(gridPosKey({
-    x: 4 - cell.x,
-    y: cell.y,
-    z: cell.z,
-  }))).length / cells.length
-  const mirrorZ = cells.filter((cell) => cellKeys.has(gridPosKey({
-    x: cell.x,
-    y: cell.y,
-    z: 4 - cell.z,
-  }))).length / cells.length
-  const mirrorBoth = cells.filter((cell) => cellKeys.has(gridPosKey({
-    x: 4 - cell.x,
-    y: cell.y,
-    z: 4 - cell.z,
-  }))).length / cells.length
-  const volume = (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1)
-
-  return {
-    cellCount: cells.length,
-    pieceCount: placedShapes.length,
-    crossContacts,
-    verticalContacts,
-    baseCount: baseCells.length,
-    baseFootprint: baseFootprint.size,
-    footprint: footprint.size,
-    levels: levels.size,
-    maxY,
-    dx: maxX - minX + 1,
-    dz: maxZ - minZ + 1,
-    volume,
-    density: cells.length / volume,
-    centerPenalty,
-    symmetry: Math.max(mirrorX, mirrorZ, mirrorBoth * 0.95),
-    heightVariance,
-  }
+function passesShapeFilters(metrics: PuzzleMetrics, spec: PuzzleSpec): boolean {
+  return metrics.baseCount >= spec.minBase &&
+    metrics.baseFootprint >= spec.minBaseFootprint &&
+    metrics.footprint >= spec.minFootprint &&
+    metrics.levels >= spec.minLevels &&
+    (spec.maxLevels === undefined || metrics.levels <= spec.maxLevels)
 }
 
 function getCellPositions(placedShapes: PlacedShape[]): Array<GridPos & { shapeId: string }> {
@@ -604,19 +473,102 @@ function shuffle<T>(items: T[]): T[] {
   return copy
 }
 
+function createThresholds(defaults: PuzzleScoreThresholds): PuzzleScoreThresholds {
+  return {
+    cohesion: options.thresholds.cohesion ?? defaults.cohesion,
+    stability: options.thresholds.stability ?? defaults.stability,
+    artistry: options.thresholds.artistry ?? defaults.artistry,
+  }
+}
+
+function getGeneratorOptions(): GeneratorOptions {
+  const args = process.argv.slice(2)
+
+  return {
+    dryRun: args.includes("--dry-run"),
+    attemptsMultiplier: getNumberOption(args, "--attempts-multiplier", 1),
+    thresholds: {
+      cohesion: getThresholdOption(args, "--cohesion", "PUZZLE_LAB_MIN_COHESION"),
+      stability: getThresholdOption(args, "--stability", "PUZZLE_LAB_MIN_STABILITY"),
+      artistry: getThresholdOption(args, "--artistry", "PUZZLE_LAB_MIN_ARTISTRY"),
+    },
+  }
+}
+
+function getThresholdOption(
+  args: string[],
+  flagName: string,
+  envName: string,
+): number | undefined {
+  const value = getOptionalNumberOption(args, flagName) ??
+    parseOptionalNumber(process.env[envName])
+
+  if (value === undefined) {
+    return undefined
+  }
+
+  if (value < 0 || value > 100) {
+    throw new Error(`${flagName} must be between 0 and 100.`)
+  }
+
+  return value
+}
+
+function getNumberOption(args: string[], flagName: string, fallback: number): number {
+  return getOptionalNumberOption(args, flagName) ?? fallback
+}
+
+function getOptionalNumberOption(args: string[], flagName: string): number | undefined {
+  const index = args.indexOf(flagName)
+
+  if (index === -1) {
+    return undefined
+  }
+
+  const rawValue = args[index + 1]
+  const value = parseOptionalNumber(rawValue)
+
+  if (value === undefined) {
+    throw new Error(`${flagName} requires a numeric value.`)
+  }
+
+  return value
+}
+
+function parseOptionalNumber(value: string | undefined): number | undefined {
+  if (value === undefined || value.trim() === "") {
+    return undefined
+  }
+
+  const parsed = Number(value)
+
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
 function formatCandidate(title: string, candidate: Candidate): string {
   const metrics = candidate.metrics
+  const scores = candidate.scores
 
   return [
     title,
-    `score=${candidate.score.toFixed(1)}`,
+    `overall=${scores.overall.toFixed(1)}`,
+    `cohesion=${scores.cohesion.toFixed(1)}`,
+    `stability=${scores.stability.toFixed(1)}`,
+    `artistry=${scores.artistry.toFixed(1)}`,
     `pieces=${metrics.pieceCount}`,
     `cells=${metrics.cellCount}`,
     `base=${metrics.baseCount}/${metrics.baseFootprint}`,
     `levels=${metrics.levels}`,
-    `symmetry=${metrics.symmetry.toFixed(2)}`,
     `contacts=${metrics.crossContacts}`,
   ].join(" | ")
+}
+
+function formatThresholds(thresholds: PuzzleScoreThresholds): string {
+  return [
+    `cohesion=${thresholds.cohesion}`,
+    `stability=${thresholds.stability}`,
+    `artistry=${thresholds.artistry}`,
+  ].join(", ")
 }
 
 function getTitlePrefix(): string {
