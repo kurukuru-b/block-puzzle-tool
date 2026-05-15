@@ -5,18 +5,12 @@ export function disposeObject3D(object: THREE.Object3D) {
   const materials = new Set<THREE.Material>()
 
   object.traverse((child) => {
-    if (!(child instanceof THREE.Mesh)) {
-      return
+    if (hasGeometry(child)) {
+      geometries.add(child.geometry)
     }
 
-    geometries.add(child.geometry)
-
-    if (Array.isArray(child.material)) {
-      for (const material of child.material) {
-        materials.add(material)
-      }
-    } else {
-      materials.add(child.material)
+    if (hasMaterial(child)) {
+      addMaterial(child.material, materials)
     }
   })
 
@@ -27,6 +21,32 @@ export function disposeObject3D(object: THREE.Object3D) {
   for (const material of materials) {
     disposeMaterial(material)
   }
+}
+
+function hasGeometry(
+  object: THREE.Object3D,
+): object is THREE.Object3D & { geometry: THREE.BufferGeometry } {
+  return "geometry" in object && object.geometry instanceof THREE.BufferGeometry
+}
+
+function hasMaterial(
+  object: THREE.Object3D,
+): object is THREE.Object3D & { material: THREE.Material | THREE.Material[] } {
+  return "material" in object
+}
+
+function addMaterial(
+  material: THREE.Material | THREE.Material[],
+  materials: Set<THREE.Material>,
+) {
+  if (Array.isArray(material)) {
+    for (const item of material) {
+      materials.add(item)
+    }
+    return
+  }
+
+  materials.add(material)
 }
 
 function disposeMaterial(material: THREE.Material) {

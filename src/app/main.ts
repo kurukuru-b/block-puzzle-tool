@@ -1146,10 +1146,7 @@ async function moveSelectedViewerProblemDifficulty(
   const orderResult = await puzzleLibraryStore.updatePuzzleOrder([
     ...currentPuzzles,
     ...library[difficulty],
-  ].map((orderedPuzzle) => ({
-    id: orderedPuzzle.id,
-    orderIndex: orderedPuzzle.orderIndex,
-  })))
+  ].map(toPuzzleOrderUpdate))
 
   if (!orderResult.ok) {
     return {
@@ -1217,10 +1214,7 @@ async function reorderSelectedViewerProblemToIndex(
   refreshViewerState()
 
   const dbResult = await puzzleLibraryStore.updatePuzzleOrder(
-    puzzles.map((orderedPuzzle) => ({
-      id: orderedPuzzle.id,
-      orderIndex: orderedPuzzle.orderIndex,
-    })),
+    puzzles.map(toPuzzleOrderUpdate),
   )
 
   if (!dbResult.ok) {
@@ -1275,10 +1269,7 @@ async function deleteSelectedViewerProblem(): Promise<{ ok: boolean, message: st
   }
 
   const orderResult = await puzzleLibraryStore.updatePuzzleOrder(
-    puzzles.map((orderedPuzzle) => ({
-      id: orderedPuzzle.id,
-      orderIndex: orderedPuzzle.orderIndex,
-    })),
+    puzzles.map(toPuzzleOrderUpdate),
   )
 
   if (!orderResult.ok) {
@@ -1479,6 +1470,13 @@ function normalizePuzzleOrder(puzzles: StoredPuzzle[]) {
   puzzles.forEach((puzzle, index) => {
     puzzle.orderIndex = index
   })
+}
+
+function toPuzzleOrderUpdate(puzzle: StoredPuzzle) {
+  return {
+    id: puzzle.id,
+    orderIndex: puzzle.orderIndex,
+  }
 }
 
 function rebuildOccupiedCells() {
