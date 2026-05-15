@@ -10,6 +10,7 @@ type CreateShapeMeshGroupOptions = {
   edgeColor?: number
   edgeOpacity?: number
   showEdges?: boolean
+  showCoreMarker?: boolean
 }
 
 export function createShapeMeshGroup(
@@ -38,6 +39,24 @@ export function createShapeMeshGroup(
       transparent: true,
       depthTest: false,
     })
+  const coreMarkerGeometry = options.showCoreMarker === false
+    ? null
+    : new THREE.SphereGeometry(0.12, 20, 12)
+  const coreMarkerBackGeometry = options.showCoreMarker === false
+    ? null
+    : new THREE.SphereGeometry(0.18, 20, 12)
+  const coreMarkerMaterial = options.showCoreMarker === false
+    ? null
+    : new THREE.MeshBasicMaterial({
+      color: 0x2563eb,
+      depthTest: false,
+    })
+  const coreMarkerBackMaterial = options.showCoreMarker === false
+    ? null
+    : new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      depthTest: false,
+    })
 
   for (const cell of shape.cells) {
     const mesh = new THREE.Mesh(geometry, material)
@@ -54,6 +73,27 @@ export function createShapeMeshGroup(
     if (edges) {
       edges.renderOrder = 8
       mesh.add(edges)
+    }
+    if (
+      cell.x === 0
+      && cell.y === 0
+      && cell.z === 0
+      && coreMarkerGeometry
+      && coreMarkerBackGeometry
+      && coreMarkerMaterial
+      && coreMarkerBackMaterial
+    ) {
+      const coreMarkerBack = new THREE.Mesh(
+        coreMarkerBackGeometry,
+        coreMarkerBackMaterial,
+      )
+      const coreMarker = new THREE.Mesh(coreMarkerGeometry, coreMarkerMaterial)
+
+      coreMarkerBack.position.set(0.28, 0.28, 0.28)
+      coreMarker.position.copy(coreMarkerBack.position)
+      coreMarkerBack.renderOrder = 12
+      coreMarker.renderOrder = 13
+      mesh.add(coreMarkerBack, coreMarker)
     }
     group.add(mesh)
   }

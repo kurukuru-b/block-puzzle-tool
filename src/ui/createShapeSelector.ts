@@ -200,6 +200,10 @@ export function createShapeSelector({
   title.textContent = "Block Puzzle Tool"
   editorPanel.appendChild(title)
 
+  const editorToolRow = document.createElement("div")
+  editorToolRow.className = "editor-tool-row"
+  editorPanel.appendChild(editorToolRow)
+
   const shapeColorModeButton = document.createElement("button")
   shapeColorModeButton.type = "button"
   shapeColorModeButton.className = "secondary-action-button color-mode-button"
@@ -210,7 +214,7 @@ export function createShapeSelector({
     setPlacedShapes(latestPlacedShapes)
     onToggleShapeColorMode()
   })
-  editorPanel.appendChild(shapeColorModeButton)
+  editorToolRow.appendChild(shapeColorModeButton)
 
   const cellEdgesButton = document.createElement("button")
   cellEdgesButton.type = "button"
@@ -220,7 +224,7 @@ export function createShapeSelector({
     updateCellEdgesButton()
     onToggleCellEdges()
   })
-  editorPanel.appendChild(cellEdgesButton)
+  editorToolRow.appendChild(cellEdgesButton)
 
   const clearSelectionButton = document.createElement("button")
   clearSelectionButton.type = "button"
