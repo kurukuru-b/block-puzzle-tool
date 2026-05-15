@@ -84,7 +84,7 @@ type CreateShapeSelectorParams = {
   onEditPlacedShape: () => void
   onExportPuzzle: () => string
   onImportPuzzle: (source: string) => ImportPuzzleResult
-  onRegisterPuzzle: (difficulty: PuzzleDifficulty) => MaybePromise<ImportPuzzleResult>
+  onRegisterPuzzle: (difficulty: PuzzleDifficulty, title: string) => MaybePromise<ImportPuzzleResult>
 }
 
 type ShapeSelector = {
@@ -643,17 +643,28 @@ export function createShapeSelector({
   registerChoices.className = "register-choices"
   dataControls.appendChild(registerChoices)
 
+  const registerTitleInput = document.createElement("input")
+  registerTitleInput.type = "text"
+  registerTitleInput.className = "register-title-input"
+  registerTitleInput.placeholder = "Problem title"
+  registerTitleInput.setAttribute("aria-label", "Problem title for registration")
+  registerChoices.appendChild(registerTitleInput)
+
   for (const difficulty of PUZZLE_DIFFICULTIES) {
     const button = document.createElement("button")
     button.type = "button"
     button.className = "secondary-action-button register-choice-button"
     button.textContent = formatDifficulty(difficulty)
     button.addEventListener("click", async () => {
-      const result = await onRegisterPuzzle(difficulty)
+      const result = await onRegisterPuzzle(difficulty, registerTitleInput.value)
 
       importStatus.textContent = result.message
       importStatus.classList.toggle("is-error", !result.ok)
-      registerChoices.classList.remove("is-visible")
+
+      if (result.ok) {
+        registerTitleInput.value = ""
+        registerChoices.classList.remove("is-visible")
+      }
     })
     registerChoices.appendChild(button)
   }
@@ -719,8 +730,13 @@ export function createShapeSelector({
   })
 
   registerButton.addEventListener("click", () => {
-    registerChoices.classList.toggle("is-visible")
-    importStatus.textContent = "Choose a difficulty to register."
+    const isVisible = registerChoices.classList.toggle("is-visible")
+
+    if (isVisible) {
+      registerTitleInput.focus()
+    }
+
+    importStatus.textContent = "Enter a title or choose a difficulty to auto-name."
     importStatus.classList.remove("is-error")
   })
 

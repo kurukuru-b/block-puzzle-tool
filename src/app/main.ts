@@ -402,7 +402,10 @@ function importPuzzle(source: string): { ok: boolean, message: string } {
   }
 }
 
-async function registerPuzzle(difficulty: PuzzleDifficulty): Promise<{ ok: boolean, message: string }> {
+async function registerPuzzle(
+  difficulty: PuzzleDifficulty,
+  requestedTitle: string,
+): Promise<{ ok: boolean, message: string }> {
   try {
     if (placedShapes.length === 0) {
       throw new Error("登録できる配置がありません。")
@@ -422,11 +425,12 @@ async function registerPuzzle(difficulty: PuzzleDifficulty): Promise<{ ok: boole
 
     const library = loadPuzzleLibrary()
     const nextNumber = library[difficulty].length + 1
+    const title = requestedTitle.trim() || `${formatDifficulty(difficulty)} ${nextNumber}`
     const storedPuzzle: StoredPuzzle = {
       ...puzzle,
       id: `${difficulty}-${Date.now()}`,
       difficulty,
-      title: `${formatDifficulty(difficulty)} ${nextNumber}`,
+      title,
     }
 
     library[difficulty].push(storedPuzzle)
@@ -449,8 +453,8 @@ async function registerPuzzle(difficulty: PuzzleDifficulty): Promise<{ ok: boole
     return {
       ok: true,
       message: puzzleLibraryStore.isRemoteConfigured()
-        ? `Registered ${formatDifficulty(difficulty)} #${nextNumber} to DB`
-        : `Registered ${formatDifficulty(difficulty)} #${nextNumber} locally`,
+        ? `Registered "${title}" to DB`
+        : `Registered "${title}" locally`,
     }
   } catch (error) {
     return {
