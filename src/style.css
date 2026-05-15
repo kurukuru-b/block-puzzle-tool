@@ -231,7 +231,7 @@ button {
   z-index: 3;
   display: grid;
   gap: 8px;
-  width: 190px;
+  width: 230px;
   pointer-events: auto;
 }
 
@@ -268,11 +268,26 @@ button {
   display: grid;
 }
 
+.hint-menu-actions,
+.hint-menu-detail {
+  display: grid;
+  gap: 6px;
+}
+
+.hint-menu-detail {
+  padding-top: 8px;
+  border-top: 1px solid rgba(105, 114, 130, 0.2);
+}
+
 .hint-menu-button {
   width: 100%;
   color: #252b36;
   background: rgba(255, 255, 255, 0.82);
   box-shadow: none;
+}
+
+.hint-wide-button {
+  width: 100%;
 }
 
 .viewer-problem-overlay {
@@ -1202,7 +1217,7 @@ button {
   .hint-overlay {
     right: 10px;
     bottom: 120px;
-    width: 150px;
+    width: 190px;
   }
 
   .hint-result-panel,

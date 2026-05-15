@@ -80,6 +80,7 @@ type PlacedShapeRecord = PlacedShape & {
 }
 
 type PlacedShapeSnapshot = PlacedShape[]
+type ViewerHintCellResult = { ok: boolean, message: string, color?: number }
 
 const puzzleLibraryStore = createPuzzleLibraryStore()
 let activeShapeGroup: THREE.Group | null = null
@@ -89,6 +90,7 @@ let viewerProblemIndex = 0
 let viewerProblemSelected = false
 let viewerColorEnabled = false
 const viewerHintRevealedShapeIds = new Set<string>()
+let viewerHintCellPickResultHandler: ((result: ViewerHintCellResult) => void) | null = null
 let shapeColorMode: ShapeColorMode = "new"
 let cellEdgesEnabled = false
 let coreMarkerEnabled = false
@@ -1313,7 +1315,7 @@ function toggleViewerHintShape(shapeId: string) {
 
 function checkViewerHintCell(
   pos: GridPos,
-): { ok: boolean, message: string, color?: number } {
+): ViewerHintCellResult {
   if (appMode !== "viewer" || !viewerProblemSelected) {
     return {
       ok: false,
@@ -1346,8 +1348,13 @@ function checkViewerHintCell(
   }
 }
 
+function startViewerHintCellPick(onResult: (result: ViewerHintCellResult) => void) {
+  viewerHintCellPickResultHandler = onResult
+}
+
 function clearViewerHints() {
   viewerHintRevealedShapeIds.clear()
+  viewerHintCellPickResultHandler = null
 }
 
 function toggleShapeColorMode() {
@@ -2044,6 +2051,7 @@ const shapeSelector = createShapeSelector({
   onToggleColor: toggleViewerColor,
   onToggleHintShape: toggleViewerHintShape,
   onCheckHintCell: checkViewerHintCell,
+  onStartHintCellPick: startViewerHintCellPick,
   onTimerStartStop: startStopTimer,
   onTimerReset: resetTimer,
   onTimerModeChange: setTimerMode,
@@ -2078,6 +2086,16 @@ createGridPointerController({
   scene: mainScene.scene,
   onHoverHits: previewSelectedShapeAt,
   onTapHits: (hits, event) => {
+    if (appMode === "viewer" && viewerHintCellPickResultHandler) {
+      const targetHit = getPlacedShapePointerHits(event)[0] ?? hits[0]
+
+      if (targetHit) {
+        viewerHintCellPickResultHandler(checkViewerHintCell(targetHit.gridPos))
+      }
+
+      return
+    }
+
     if (appMode !== "editor") {
       return
     }

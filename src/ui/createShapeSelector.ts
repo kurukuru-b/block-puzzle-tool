@@ -86,6 +86,9 @@ type CreateShapeSelectorParams = {
   onToggleColor: () => void
   onToggleHintShape: (shapeId: string) => void
   onCheckHintCell: (pos: GridPos) => ImportPuzzleResult & { color?: number }
+  onStartHintCellPick: (
+    onResult: (result: ImportPuzzleResult & { color?: number }) => void,
+  ) => void
   onTimerStartStop: () => void
   onTimerReset: () => void
   onTimerModeChange: (mode: TimerMode) => void
@@ -144,6 +147,7 @@ export function createShapeSelector({
   onToggleColor,
   onToggleHintShape,
   onCheckHintCell,
+  onStartHintCellPick,
   onTimerStartStop,
   onTimerReset,
   onTimerModeChange,
@@ -206,6 +210,14 @@ export function createShapeSelector({
   const hintMenu = document.createElement("div")
   hintMenu.className = "hint-menu"
   hintOverlay.appendChild(hintMenu)
+
+  const hintMenuActions = document.createElement("div")
+  hintMenuActions.className = "hint-menu-actions"
+  hintMenu.appendChild(hintMenuActions)
+
+  const hintMenuDetail = document.createElement("div")
+  hintMenuDetail.className = "hint-menu-detail"
+  hintMenu.appendChild(hintMenuDetail)
 
   hintOverlayButton.addEventListener("click", () => {
     const isOpen = hintOverlay.classList.toggle("is-open")
@@ -762,10 +774,8 @@ export function createShapeSelector({
     button.textContent = item.label
     button.addEventListener("click", () => {
       item.action()
-      hintOverlay.classList.remove("is-open")
-      hintOverlayButton.setAttribute("aria-expanded", "false")
     })
-    hintMenu.appendChild(button)
+    hintMenuActions.appendChild(button)
   }
 
   const timerPanel = document.createElement("div")
@@ -1172,43 +1182,74 @@ export function createShapeSelector({
   function renderHintPieceCount() {
     const usedShapes = getUsedHintShapes()
 
+    clearHintMenuDetail()
     openHintResult("Piece count")
-    appendHintText(`${usedShapes.length} piece(s) are used.`)
+    appendHintText(`ピース数：${usedShapes.length}`)
   }
 
   function renderHintUsedPieces() {
+    const usedShapes = getUsedHintShapes()
+
+    clearHintMenuDetail()
     openHintResult("Used pieces")
-    appendHintShapeList(getUsedHintShapes(), { withToggle: false })
+    appendHintText(
+      usedShapes.length === 0
+        ? "使用パーツ：none"
+        : `使用パーツ：${usedShapes.map((shape) => shape.label).join(", ")}`,
+    )
   }
 
   function renderHintPieceCheck() {
-    openHintResult("Check piece")
-    appendHintText("Choose one piece.")
-    appendHintShapeList(latestViewerState.hintShapes, {
+    clearHintMenuDetail()
+    appendHintMenuTitle("Check piece")
+    appendHintShapeList(latestViewerState.hintShapes, hintMenuDetail, {
       onSelect: (shape) => {
         openHintResult("Check piece")
-        appendHintShapeList([shape], { withToggle: false })
-        appendHintText(shape.isUsed
-          ? `${shape.label} is used.`
-          : `${shape.label} is not used.`
-        )
+        appendHintText(`${shape.label}：${shape.isUsed ? "used" : "unused"}`)
       },
     })
+
+    openHintResult("Check piece")
+    appendHintText("右側から確認するパーツを選択")
   }
 
-  function renderHintPieceReveal() {
-    openHintResult("Reveal piece")
-    appendHintText("Choose a used piece to color it on the board.")
-    appendHintShapeList(getUsedHintShapes(), { withToggle: true })
+  function renderHintPieceReveal(options: { resetResult?: boolean } = {}) {
+    clearHintMenuDetail()
+    appendHintMenuTitle("Reveal piece")
+    appendHintShapeList(getUsedHintShapes(), hintMenuDetail, { withToggle: true })
+
+    if (options.resetResult !== false) {
+      openHintResult("Reveal piece")
+      appendHintText("右側から表示するパーツを選択")
+    }
   }
 
   function renderHintCellColor() {
-    openHintResult("Cell color")
-    appendHintText("Enter a cell coordinate.")
+    clearHintMenuDetail()
+    appendHintMenuTitle("Cell Reveal")
+
+    const tapButton = document.createElement("button")
+    tapButton.type = "button"
+    tapButton.className = "secondary-action-button hint-wide-button"
+    tapButton.textContent = "Tap Cell"
+    tapButton.addEventListener("click", () => {
+      openHintResult("Cell Reveal")
+      appendHintText("盤面のセルをタップ")
+      onStartHintCellPick((result) => {
+        openHintResult("Cell Reveal")
+        appendHintCellResult(result)
+      })
+    })
+    hintMenuDetail.appendChild(tapButton)
+
+    const manualLabel = document.createElement("span")
+    manualLabel.className = "hint-title"
+    manualLabel.textContent = "or X/Y/Z"
+    hintMenuDetail.appendChild(manualLabel)
 
     const row = document.createElement("div")
     row.className = "hint-cell-row"
-    hintResultBody.appendChild(row)
+    hintMenuDetail.appendChild(row)
     const inputs = new Map<GridAxis, HTMLInputElement>()
 
     for (const axis of ["x", "y", "z"] satisfies GridAxis[]) {
@@ -1230,17 +1271,8 @@ export function createShapeSelector({
     button.textContent = "Check"
     row.appendChild(button)
 
-    const resultRow = document.createElement("div")
-    resultRow.className = "hint-cell-result"
-    hintResultBody.appendChild(resultRow)
-
-    const swatch = document.createElement("span")
-    swatch.className = "hint-cell-swatch"
-    resultRow.appendChild(swatch)
-
-    const message = document.createElement("span")
-    message.textContent = "Location mode: choose X/Y/Z."
-    resultRow.appendChild(message)
+    openHintResult("Cell color")
+    appendHintText("右側からタップ指定または座標指定")
 
     button.addEventListener("click", () => {
       const x = readHintCellInput(inputs, "x")
@@ -1250,14 +1282,20 @@ export function createShapeSelector({
         ? { ok: false, message: "Enter X/Y/Z from 0 to 4." }
         : onCheckHintCell({ x, y, z })
 
-      message.textContent = result.message
-      resultRow.classList.toggle("is-error", !result.ok)
-      swatch.classList.toggle("is-visible", result.color !== undefined)
-
-      if (result.color !== undefined) {
-        swatch.style.backgroundColor = formatHexColor(result.color)
-      }
+      openHintResult("Cell Reveal")
+      appendHintCellResult(result)
     })
+  }
+
+  function clearHintMenuDetail() {
+    hintMenuDetail.replaceChildren()
+  }
+
+  function appendHintMenuTitle(title: string) {
+    const item = document.createElement("span")
+    item.className = "hint-title"
+    item.textContent = title
+    hintMenuDetail.appendChild(item)
   }
 
   function openHintResult(title: string) {
@@ -1273,8 +1311,29 @@ export function createShapeSelector({
     hintResultBody.appendChild(item)
   }
 
+  function appendHintCellResult(result: ImportPuzzleResult & { color?: number }) {
+    const resultRow = document.createElement("div")
+    resultRow.className = "hint-cell-result"
+    resultRow.classList.toggle("is-error", !result.ok)
+    hintResultBody.appendChild(resultRow)
+
+    const swatch = document.createElement("span")
+    swatch.className = "hint-cell-swatch"
+    swatch.classList.toggle("is-visible", result.color !== undefined)
+    resultRow.appendChild(swatch)
+
+    if (result.color !== undefined) {
+      swatch.style.backgroundColor = formatHexColor(result.color)
+    }
+
+    const message = document.createElement("span")
+    message.textContent = result.message
+    resultRow.appendChild(message)
+  }
+
   function appendHintShapeList(
     shapes: ViewerHintShapeSummary[],
+    target: HTMLElement,
     options: {
       withToggle?: boolean
       onSelect?: (shape: ViewerHintShapeSummary) => void
@@ -1282,7 +1341,7 @@ export function createShapeSelector({
   ) {
     const list = document.createElement("div")
     list.className = "hint-shape-list"
-    hintResultBody.appendChild(list)
+    target.appendChild(list)
 
     if (shapes.length === 0) {
       const empty = document.createElement("span")
@@ -1323,8 +1382,11 @@ export function createShapeSelector({
         button.classList.toggle("is-selected", options.withToggle === true && shape.isRevealed)
         button.addEventListener("click", () => {
           if (options.withToggle) {
+            const willReveal = !shape.isRevealed
             onToggleHintShape(shape.shapeId)
-            renderHintPieceReveal()
+            openHintResult("Reveal piece")
+            appendHintText(`${shape.label}：${willReveal ? "on" : "off"}`)
+            renderHintPieceReveal({ resetResult: false })
             return
           }
 
