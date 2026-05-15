@@ -353,6 +353,11 @@ button {
   line-height: 1.2;
 }
 
+.hint-reset-button {
+  width: 100%;
+  height: 30px;
+}
+
 .hint-result-body {
   display: grid;
   gap: 9px;
@@ -364,6 +369,34 @@ button {
   font-size: 12px;
   font-weight: 750;
   line-height: 1.35;
+}
+
+.hint-entry {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 7px;
+  align-items: center;
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid rgba(105, 114, 130, 0.22);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #374151;
+  background: rgba(255, 255, 255, 0.66);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hint-entry:hover {
+  border-color: rgba(37, 99, 235, 0.38);
+  background: #eff6ff;
+}
+
+.hint-entry.is-error {
+  color: #b91c1c;
 }
 
 .editor-panels.is-ui-hidden .shape-selector,

@@ -15,6 +15,7 @@ type CreateShapeMeshGroupOptions = {
   showEdges?: boolean
   showCoreMarker?: boolean
   coreCell?: LocalCellPos
+  getCellColor?: (cell: LocalCellPos) => number | undefined
 }
 
 export function createShapeMeshGroup(
@@ -57,7 +58,16 @@ export function createShapeMeshGroup(
   const coreCell = options.coreCell ?? { x: 0, y: 0, z: 0 }
 
   for (const cell of shape.cells) {
-    const mesh = new THREE.Mesh(geometry, material)
+    const cellColor = options.getCellColor?.(cell)
+    const cellMaterial = cellColor === undefined
+      ? material
+      : material.clone()
+
+    if (cellColor !== undefined) {
+      cellMaterial.color.setHex(cellColor)
+    }
+
+    const mesh = new THREE.Mesh(geometry, cellMaterial)
     const edges = edgeGeometry && edgeMaterial
       ? new THREE.LineSegments(edgeGeometry, edgeMaterial)
       : null

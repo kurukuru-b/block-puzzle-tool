@@ -90,6 +90,7 @@ let viewerProblemIndex = 0
 let viewerProblemSelected = false
 let viewerColorEnabled = false
 const viewerHintRevealedShapeIds = new Set<string>()
+const viewerHintRevealedCellKeys = new Set<string>()
 let viewerHintCellPickResultHandler: ((result: ViewerHintCellResult) => void) | null = null
 let shapeColorMode: ShapeColorMode = "new"
 let cellEdgesEnabled = false
@@ -853,6 +854,7 @@ function addPlacedShape(placedShape: PlacedShape) {
     cells: rotatedCells,
   }, {
     color: getPlacedShapeColor(shape),
+    getCellColor: (cell) => getPlacedShapeCellColor(placedShape, shape, cell),
     edgeColor: 0xff2bd6,
     edgeOpacity: 0.95,
     showEdges: cellEdgesEnabled,
@@ -1041,7 +1043,7 @@ function selectViewerProblem(puzzleId: string) {
 
 function clearViewerProblemSelection() {
   viewerProblemSelected = false
-  clearViewerHints()
+  resetViewerHintState()
   clearPlacedShapes()
   refreshPlacedShapeState()
   refreshViewerState()
@@ -1313,7 +1315,7 @@ function toggleViewerHintShape(shapeId: string) {
   refreshViewerState()
 }
 
-function checkViewerHintCell(
+function revealViewerHintCell(
   pos: GridPos,
 ): ViewerHintCellResult {
   if (appMode !== "viewer" || !viewerProblemSelected) {
@@ -1341,9 +1343,12 @@ function checkViewerHintCell(
     }
   }
 
+  viewerHintRevealedCellKeys.add(gridPosKey(pos))
+  rebuildPlacedShapeGroup(placedShape)
+
   return {
     ok: true,
-    message: `${getShapeDisplayLabel(shape.id, shapeColorMode)} at (${pos.x}, ${pos.y}, ${pos.z})`,
+    message: `${getShapeDisplayLabel(shape.id, shapeColorMode)}：1 cell revealed`,
     color: getShapeDisplayColor(shape, shapeColorMode),
   }
 }
@@ -1353,7 +1358,14 @@ function startViewerHintCellPick(onResult: (result: ViewerHintCellResult) => voi
 }
 
 function clearViewerHints() {
+  resetViewerHintState()
+  rebuildAllPlacedShapeGroups()
+  refreshViewerState()
+}
+
+function resetViewerHintState() {
   viewerHintRevealedShapeIds.clear()
+  viewerHintRevealedCellKeys.clear()
   viewerHintCellPickResultHandler = null
 }
 
@@ -1519,14 +1531,14 @@ function loadSelectedViewerPuzzle() {
   const puzzles = loadPuzzleLibrary()[viewerDifficulty]
 
   if (puzzles.length === 0 || !viewerProblemSelected) {
-    clearViewerHints()
+    resetViewerHintState()
     clearPlacedShapes()
     refreshPlacedShapeState()
     return
   }
 
   viewerProblemIndex = clamp(viewerProblemIndex, 0, puzzles.length - 1)
-  clearViewerHints()
+  resetViewerHintState()
   clearPlacedShapes()
 
   for (const placedShape of puzzles[viewerProblemIndex].placedShapes) {
@@ -1781,6 +1793,7 @@ function rebuildPlacedShapeGroup(placedShape: PlacedShapeRecord) {
     cells: rotatedShape.cells,
   }, {
     color: getPlacedShapeColor(shape),
+    getCellColor: (cell) => getPlacedShapeCellColor(placedShape, shape, cell),
     edgeColor: 0xff2bd6,
     edgeOpacity: 0.95,
     showEdges: cellEdgesEnabled,
@@ -1816,6 +1829,30 @@ function getPlacedShapeColor(shape: typeof shapeDefinitions[number]): number {
   }
 
   return getShapeDisplayColor(shape, shapeColorMode)
+}
+
+function getPlacedShapeCellColor(
+  placedShape: PlacedShape,
+  shape: typeof shapeDefinitions[number],
+  cell: { x: number, y: number, z: number },
+): number | undefined {
+  if (
+    appMode !== "viewer" ||
+    viewerColorEnabled ||
+    viewerHintRevealedShapeIds.has(shape.id)
+  ) {
+    return undefined
+  }
+
+  const cellKey = gridPosKey({
+    x: placedShape.origin.x + cell.x,
+    y: placedShape.origin.y + cell.y,
+    z: placedShape.origin.z + cell.z,
+  })
+
+  return viewerHintRevealedCellKeys.has(cellKey)
+    ? getShapeDisplayColor(shape, shapeColorMode)
+    : undefined
 }
 
 function getPlacedShapeAtCell(pos: GridPos): PlacedShapeRecord | null {
@@ -2050,7 +2087,8 @@ const shapeSelector = createShapeSelector({
   onDeleteProblem: deleteSelectedViewerProblem,
   onToggleColor: toggleViewerColor,
   onToggleHintShape: toggleViewerHintShape,
-  onCheckHintCell: checkViewerHintCell,
+  onRevealHintCell: revealViewerHintCell,
+  onResetHints: clearViewerHints,
   onStartHintCellPick: startViewerHintCellPick,
   onTimerStartStop: startStopTimer,
   onTimerReset: resetTimer,
@@ -2090,7 +2128,7 @@ createGridPointerController({
       const targetHit = getPlacedShapePointerHits(event)[0] ?? hits[0]
 
       if (targetHit) {
-        viewerHintCellPickResultHandler(checkViewerHintCell(targetHit.gridPos))
+        viewerHintCellPickResultHandler(revealViewerHintCell(targetHit.gridPos))
       }
 
       return
