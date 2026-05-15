@@ -32,6 +32,14 @@ export type ViewerPuzzleSummary = {
   title: string
 }
 
+export type ViewerHintShapeSummary = {
+  shapeId: string
+  label: string
+  color: number
+  isUsed: boolean
+  isRevealed: boolean
+}
+
 export type ViewerPanelState = {
   difficulty: PuzzleDifficulty
   problemIndex: number
@@ -44,6 +52,7 @@ export type ViewerPanelState = {
   timerMode: TimerMode
   timerRunning: boolean
   countdownSeconds: number
+  hintShapes: ViewerHintShapeSummary[]
 }
 
 export type TimerMode = "up" | "down"
@@ -75,6 +84,8 @@ type CreateShapeSelectorParams = {
   onReorderProblemToIndex: (index: number) => MaybePromise<ImportPuzzleResult>
   onDeleteProblem: () => MaybePromise<ImportPuzzleResult>
   onToggleColor: () => void
+  onToggleHintShape: (shapeId: string) => void
+  onCheckHintCell: (pos: GridPos) => ImportPuzzleResult & { color?: number }
   onTimerStartStop: () => void
   onTimerReset: () => void
   onTimerModeChange: (mode: TimerMode) => void
@@ -131,6 +142,8 @@ export function createShapeSelector({
   onReorderProblemToIndex,
   onDeleteProblem,
   onToggleColor,
+  onToggleHintShape,
+  onCheckHintCell,
   onTimerStartStop,
   onTimerReset,
   onTimerModeChange,
@@ -701,6 +714,70 @@ export function createShapeSelector({
   colorButton.addEventListener("click", onToggleColor)
   viewerActions.appendChild(colorButton)
 
+  const hintPanel = document.createElement("div")
+  hintPanel.className = "hint-panel"
+  viewerPanel.appendChild(hintPanel)
+
+  const hintTitle = document.createElement("span")
+  hintTitle.className = "hint-title"
+  hintTitle.textContent = "Hints"
+  hintPanel.appendChild(hintTitle)
+
+  const hintShapeList = document.createElement("div")
+  hintShapeList.className = "hint-shape-list"
+  hintPanel.appendChild(hintShapeList)
+
+  const hintCellRow = document.createElement("div")
+  hintCellRow.className = "hint-cell-row"
+  hintPanel.appendChild(hintCellRow)
+
+  const hintCellInputs = new Map<GridAxis, HTMLInputElement>()
+
+  for (const axis of ["x", "y", "z"] satisfies GridAxis[]) {
+    const input = document.createElement("input")
+    input.type = "number"
+    input.min = "0"
+    input.max = "4"
+    input.step = "1"
+    input.className = "hint-cell-input"
+    input.placeholder = axis.toUpperCase()
+    input.setAttribute("aria-label", `Hint ${axis.toUpperCase()} coordinate`)
+    hintCellRow.appendChild(input)
+    hintCellInputs.set(axis, input)
+  }
+
+  const hintCellButton = document.createElement("button")
+  hintCellButton.type = "button"
+  hintCellButton.className = "secondary-action-button"
+  hintCellButton.textContent = "Cell"
+  hintCellRow.appendChild(hintCellButton)
+
+  const hintCellResult = document.createElement("div")
+  hintCellResult.className = "hint-cell-result"
+  hintPanel.appendChild(hintCellResult)
+
+  const hintCellSwatch = document.createElement("span")
+  hintCellSwatch.className = "hint-cell-swatch"
+  hintCellResult.appendChild(hintCellSwatch)
+
+  const hintCellMessage = document.createElement("span")
+  hintCellMessage.className = "hint-cell-message"
+  hintCellMessage.textContent = "Select a cell."
+  hintCellResult.appendChild(hintCellMessage)
+
+  hintCellButton.addEventListener("click", () => {
+    const x = readHintCellInput("x")
+    const y = readHintCellInput("y")
+    const z = readHintCellInput("z")
+
+    if (x === null || y === null || z === null) {
+      setHintCellResult({ ok: false, message: "Enter X/Y/Z from 0 to 4." })
+      return
+    }
+
+    setHintCellResult(onCheckHintCell({ x, y, z }))
+  })
+
   const timerPanel = document.createElement("div")
   timerPanel.className = "timer-panel"
   viewerPanel.appendChild(timerPanel)
@@ -1086,6 +1163,7 @@ export function createShapeSelector({
     countdownInput.value = String(Math.max(1, state.countdownSeconds))
     countdownRow.classList.toggle("is-disabled", state.timerMode !== "down")
     countdownInput.disabled = state.timerMode !== "down" || state.timerRunning
+    rebuildHintPanel(state)
 
     for (const [mode, button] of timerModeButtons) {
       const isSelected = mode === state.timerMode
@@ -1094,6 +1172,74 @@ export function createShapeSelector({
     }
 
     registerButton.textContent = "Register"
+  }
+
+  function rebuildHintPanel(state: ViewerPanelState) {
+    hintShapeList.replaceChildren()
+
+    if (state.selectedPuzzleId === null) {
+      const empty = document.createElement("span")
+      empty.className = "hint-empty"
+      empty.textContent = "No selected puzzle."
+      hintShapeList.appendChild(empty)
+      hintCellButton.disabled = true
+      return
+    }
+
+    hintCellButton.disabled = false
+
+    for (const shape of state.hintShapes) {
+      const row = document.createElement("div")
+      row.className = "hint-shape-row"
+      row.classList.toggle("is-unused", !shape.isUsed)
+
+      const swatch = document.createElement("span")
+      swatch.className = "hint-shape-swatch"
+      swatch.style.backgroundColor = formatHexColor(shape.color)
+      row.appendChild(swatch)
+
+      const label = document.createElement("span")
+      label.className = "hint-shape-label"
+      label.textContent = shape.label
+      row.appendChild(label)
+
+      const usedLabel = document.createElement("span")
+      usedLabel.className = "hint-shape-used"
+      usedLabel.textContent = shape.isUsed ? "Used" : "Unused"
+      row.appendChild(usedLabel)
+
+      const button = document.createElement("button")
+      button.type = "button"
+      button.className = "secondary-action-button hint-shape-button"
+      button.textContent = shape.isRevealed ? "On" : "Off"
+      button.disabled = !shape.isUsed
+      button.classList.toggle("is-selected", shape.isRevealed)
+      button.addEventListener("click", () => onToggleHintShape(shape.shapeId))
+      row.appendChild(button)
+
+      hintShapeList.appendChild(row)
+    }
+  }
+
+  function readHintCellInput(axis: GridAxis): number | null {
+    const input = hintCellInputs.get(axis)
+    const value = Number.parseInt(input?.value ?? "", 10)
+
+    if (!Number.isInteger(value) || value < 0 || value > 4) {
+      return null
+    }
+
+    return value
+  }
+
+  function setHintCellResult(result: ImportPuzzleResult & { color?: number }) {
+    hintCellMessage.textContent = result.message
+    hintCellResult.classList.toggle("is-error", !result.ok)
+    hintCellSwatch.classList.toggle("is-visible", result.color !== undefined)
+
+    if (result.color !== undefined) {
+      hintCellSwatch.style.backgroundColor = formatHexColor(result.color)
+    }
   }
 
   function resetDeleteConfirmation() {

@@ -53,6 +53,7 @@ import {
 import { requirePasswordAccess } from "./passwordGate"
 import {
   getShapeDisplayColor,
+  getShapeDisplayLabel,
   type ShapeColorMode,
 } from "./shapeAppearance"
 
@@ -87,6 +88,7 @@ let viewerDifficulty: PuzzleDifficulty = "easy"
 let viewerProblemIndex = 0
 let viewerProblemSelected = false
 let viewerColorEnabled = false
+const viewerHintRevealedShapeIds = new Set<string>()
 let shapeColorMode: ShapeColorMode = "new"
 let cellEdgesEnabled = false
 let coreMarkerEnabled = false
@@ -1037,6 +1039,7 @@ function selectViewerProblem(puzzleId: string) {
 
 function clearViewerProblemSelection() {
   viewerProblemSelected = false
+  clearViewerHints()
   clearPlacedShapes()
   refreshPlacedShapeState()
   refreshViewerState()
@@ -1293,10 +1296,65 @@ function toggleViewerColor() {
   refreshViewerState()
 }
 
+function toggleViewerHintShape(shapeId: string) {
+  if (appMode !== "viewer" || !viewerProblemSelected) {
+    return
+  }
+
+  if (viewerHintRevealedShapeIds.has(shapeId)) {
+    viewerHintRevealedShapeIds.delete(shapeId)
+  } else {
+    viewerHintRevealedShapeIds.add(shapeId)
+  }
+
+  rebuildAllPlacedShapeGroups()
+  refreshViewerState()
+}
+
+function checkViewerHintCell(
+  pos: GridPos,
+): { ok: boolean, message: string, color?: number } {
+  if (appMode !== "viewer" || !viewerProblemSelected) {
+    return {
+      ok: false,
+      message: "No selected puzzle.",
+    }
+  }
+
+  const placedShape = getPlacedShapeAtCell(pos)
+
+  if (!placedShape) {
+    return {
+      ok: false,
+      message: `(${pos.x}, ${pos.y}, ${pos.z}) is empty.`,
+    }
+  }
+
+  const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)
+
+  if (!shape) {
+    return {
+      ok: false,
+      message: `Unknown shape: ${placedShape.shapeId}`,
+    }
+  }
+
+  return {
+    ok: true,
+    message: `${getShapeDisplayLabel(shape.id, shapeColorMode)} at (${pos.x}, ${pos.y}, ${pos.z})`,
+    color: getShapeDisplayColor(shape, shapeColorMode),
+  }
+}
+
+function clearViewerHints() {
+  viewerHintRevealedShapeIds.clear()
+}
+
 function toggleShapeColorMode() {
   shapeColorMode = shapeColorMode === "new" ? "old" : "new"
   rebuildAllPlacedShapeGroups()
   renderSelectedShape()
+  refreshViewerState()
 }
 
 function toggleCellEdges() {
@@ -1417,7 +1475,22 @@ function getViewerPanelState(): ViewerPanelState {
     timerMode,
     timerRunning,
     countdownSeconds,
+    hintShapes: getViewerHintShapeSummaries(selectedPuzzle),
   }
+}
+
+function getViewerHintShapeSummaries(
+  puzzle: StoredPuzzle | null,
+): ViewerPanelState["hintShapes"] {
+  const usedShapeIds = new Set(puzzle?.placedShapes.map((shape) => shape.shapeId) ?? [])
+
+  return shapeDefinitions.map((shape) => ({
+    shapeId: shape.id,
+    label: getShapeDisplayLabel(shape.id, shapeColorMode),
+    color: getShapeDisplayColor(shape, shapeColorMode),
+    isUsed: usedShapeIds.has(shape.id),
+    isRevealed: viewerHintRevealedShapeIds.has(shape.id),
+  }))
 }
 
 function getTimerText(): string {
@@ -1439,12 +1512,14 @@ function loadSelectedViewerPuzzle() {
   const puzzles = loadPuzzleLibrary()[viewerDifficulty]
 
   if (puzzles.length === 0 || !viewerProblemSelected) {
+    clearViewerHints()
     clearPlacedShapes()
     refreshPlacedShapeState()
     return
   }
 
   viewerProblemIndex = clamp(viewerProblemIndex, 0, puzzles.length - 1)
+  clearViewerHints()
   clearPlacedShapes()
 
   for (const placedShape of puzzles[viewerProblemIndex].placedShapes) {
@@ -1725,11 +1800,35 @@ function rebuildAllPlacedShapeGroups() {
 }
 
 function getPlacedShapeColor(shape: typeof shapeDefinitions[number]): number {
-  if (appMode === "viewer" && !viewerColorEnabled) {
+  if (
+    appMode === "viewer" &&
+    !viewerColorEnabled &&
+    !viewerHintRevealedShapeIds.has(shape.id)
+  ) {
     return 0xd9dee8
   }
 
   return getShapeDisplayColor(shape, shapeColorMode)
+}
+
+function getPlacedShapeAtCell(pos: GridPos): PlacedShapeRecord | null {
+  for (const placedShape of placedShapes) {
+    const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)
+
+    if (!shape) {
+      throw new Error(`Shape not found: ${placedShape.shapeId}`)
+    }
+
+    const rotatedCells = rotateShapeCells(shape.cells, placedShape.rotation)
+
+    for (const cell of getPlacedCellPositions(placedShape.origin, rotatedCells)) {
+      if (cell.x === pos.x && cell.y === pos.y && cell.z === pos.z) {
+        return placedShape
+      }
+    }
+  }
+
+  return null
 }
 
 function getOccupiedCellsExcluding(excludedPlacedShapeId: string): Set<string> {
@@ -1943,6 +2042,8 @@ const shapeSelector = createShapeSelector({
   onReorderProblemToIndex: reorderSelectedViewerProblemToDisplayIndex,
   onDeleteProblem: deleteSelectedViewerProblem,
   onToggleColor: toggleViewerColor,
+  onToggleHintShape: toggleViewerHintShape,
+  onCheckHintCell: checkViewerHintCell,
   onTimerStartStop: startStopTimer,
   onTimerReset: resetTimer,
   onTimerModeChange: setTimerMode,
