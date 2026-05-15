@@ -259,15 +259,16 @@ function createPreviewRotationGuide(cells: Array<{ x: number, y: number, z: numb
     bounds.maxZ - bounds.minZ + 1,
   ) * 0.62 + 0.42
 
-  guide.add(createRotationRing("x", center, radius, 0xef4444))
-  guide.add(createRotationRing("y", center, radius + 0.07, 0x22c55e))
-  guide.add(createRotationRing("z", center, radius + 0.14, 0x2563eb))
+  guide.add(createRotationRing("x", "R", center, radius, 0xef4444))
+  guide.add(createRotationRing("y", "F", center, radius + 0.07, 0x22c55e))
+  guide.add(createRotationRing("z", "V", center, radius + 0.14, 0x2563eb))
 
   return guide
 }
 
 function createRotationRing(
   axis: "x" | "y" | "z",
+  label: string,
   center: THREE.Vector3,
   radius: number,
   color: number,
@@ -275,11 +276,11 @@ function createRotationRing(
   const ring = new THREE.Group()
   const material = new THREE.MeshBasicMaterial({
     color,
-    opacity: 0.82,
+    opacity: 0.36,
     transparent: true,
     depthTest: false,
   })
-  const geometry = new THREE.TorusGeometry(radius, 0.025, 8, 64)
+  const geometry = new THREE.TorusGeometry(radius, 0.014, 8, 64)
   const mesh = new THREE.Mesh(geometry, material)
 
   mesh.renderOrder = 4
@@ -296,6 +297,7 @@ function createRotationRing(
   const arrow = createRotationArrow(axis, center, radius, color)
 
   ring.add(arrow)
+  ring.add(createRotationLabel(axis, label, center, radius, color))
 
   return ring
 }
@@ -311,7 +313,7 @@ function createRotationArrow(
     new THREE.ConeGeometry(0.12, 0.26, 16),
     new THREE.MeshBasicMaterial({
       color,
-      opacity: 0.92,
+      opacity: 0.52,
       transparent: true,
       depthTest: false,
     }),
@@ -335,6 +337,69 @@ function createRotationArrow(
   cone.renderOrder = 5
 
   return cone
+}
+
+function createRotationLabel(
+  axis: "x" | "y" | "z",
+  label: string,
+  center: THREE.Vector3,
+  radius: number,
+  color: number,
+): THREE.Sprite {
+  const texture = createTextSpriteTexture(label, color)
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: texture,
+    opacity: 0.78,
+    transparent: true,
+    depthTest: false,
+  }))
+  const offset = radius + 0.22
+
+  if (axis === "x") {
+    sprite.position.set(center.x, center.y + offset, center.z)
+  } else if (axis === "y") {
+    sprite.position.set(center.x + offset, center.y, center.z)
+  } else {
+    sprite.position.set(center.x, center.y, center.z + offset)
+  }
+
+  sprite.scale.set(0.42, 0.42, 1)
+  sprite.renderOrder = 6
+
+  return sprite
+}
+
+function createTextSpriteTexture(label: string, color: number): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas")
+  const size = 96
+  const context = canvas.getContext("2d")
+
+  canvas.width = size
+  canvas.height = size
+
+  if (!context) {
+    throw new Error("Canvas 2D context is not available.")
+  }
+
+  context.clearRect(0, 0, size, size)
+  context.fillStyle = "rgba(248, 250, 252, 0.82)"
+  context.strokeStyle = `#${color.toString(16).padStart(6, "0")}`
+  context.lineWidth = 6
+  context.beginPath()
+  context.arc(size / 2, size / 2, 36, 0, Math.PI * 2)
+  context.fill()
+  context.stroke()
+  context.fillStyle = "#111827"
+  context.font = "700 42px system-ui, sans-serif"
+  context.textAlign = "center"
+  context.textBaseline = "middle"
+  context.fillText(label, size / 2, size / 2 + 1)
+
+  const texture = new THREE.CanvasTexture(canvas)
+
+  texture.needsUpdate = true
+
+  return texture
 }
 
 function getLocalCellBounds(cells: Array<{ x: number, y: number, z: number }>) {

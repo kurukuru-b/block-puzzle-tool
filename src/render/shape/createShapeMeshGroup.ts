@@ -7,6 +7,8 @@ const CELL_SIZE = 1
 type CreateShapeMeshGroupOptions = {
   color?: number
   opacity?: number
+  edgeColor?: number
+  edgeOpacity?: number
 }
 
 export function createShapeMeshGroup(
@@ -24,9 +26,16 @@ export function createShapeMeshGroup(
     opacity: options.opacity ?? 1,
     transparent: options.opacity !== undefined && options.opacity < 1,
   })
+  const edgeGeometry = new THREE.EdgesGeometry(geometry)
+  const edgeMaterial = new THREE.LineBasicMaterial({
+    color: options.edgeColor ?? 0x111827,
+    opacity: options.edgeOpacity ?? 0.28,
+    transparent: true,
+  })
 
   for (const cell of shape.cells) {
     const mesh = new THREE.Mesh(geometry, material)
+    const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial)
 
     mesh.position.set(
       cell.x,
@@ -34,6 +43,7 @@ export function createShapeMeshGroup(
       cell.z,
     )
 
+    mesh.add(edges)
     group.add(mesh)
   }
 
