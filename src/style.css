@@ -167,7 +167,7 @@ button {
 .ui-toggle-button {
   position: absolute;
   top: 24px;
-  left: 234px;
+  left: 246px;
   z-index: 3;
   height: 34px;
   padding: 0 12px;
@@ -410,7 +410,7 @@ button {
 }
 
 .editor-panels.is-ui-hidden .ui-toggle-button {
-  left: 16px;
+  left: 24px;
   top: 16px;
 }
 
@@ -977,6 +977,7 @@ button {
 }
 
 .color-mode-button,
+.color-toggle-button,
 .cell-edges-button,
 .core-marker-button {
   width: 100%;
@@ -1167,7 +1168,7 @@ button {
 
 .visual-settings-buttons {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1306,7 +1307,7 @@ button {
   }
 
   .editor-panels.is-ui-hidden .ui-toggle-button {
-    left: 10px;
+    left: 18px;
     right: auto;
   }
 

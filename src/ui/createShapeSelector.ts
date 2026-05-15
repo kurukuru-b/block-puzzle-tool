@@ -323,6 +323,11 @@ export function createShapeSelector({
     onToggleCoreMarker()
   })
 
+  const colorButton = document.createElement("button")
+  colorButton.type = "button"
+  colorButton.className = "secondary-action-button color-toggle-button"
+  colorButton.addEventListener("click", onToggleColor)
+
   const clearSelectionButton = document.createElement("button")
   clearSelectionButton.type = "button"
   clearSelectionButton.className = "secondary-action-button clear-selection-button"
@@ -805,16 +810,6 @@ export function createShapeSelector({
   problemStatus.className = "problem-status"
   viewerPanel.appendChild(problemStatus)
 
-  const viewerActions = document.createElement("div")
-  viewerActions.className = "viewer-actions"
-  viewerPanel.appendChild(viewerActions)
-
-  const colorButton = document.createElement("button")
-  colorButton.type = "button"
-  colorButton.className = "secondary-action-button color-toggle-button"
-  colorButton.addEventListener("click", onToggleColor)
-  viewerActions.appendChild(colorButton)
-
   const hintMenuButtons = [
     { key: "piece-count", label: "Piece count", action: renderHintPieceCount },
     { key: "used-pieces", label: "Used pieces", action: renderHintUsedPieces },
@@ -942,6 +937,7 @@ export function createShapeSelector({
   visualSettings.appendChild(visualSettingsButtons)
   visualSettingsButtons.append(
     shapeColorModeButton,
+    colorButton,
     cellEdgesButton,
     coreMarkerButton,
   )

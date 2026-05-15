@@ -89,7 +89,7 @@ let appMode: AppMode = "editor"
 let viewerDifficulty: PuzzleDifficulty = "easy"
 let viewerProblemIndex = 0
 let viewerProblemSelected = false
-let viewerColorEnabled = false
+let shapeColorEnabled = true
 const viewerHintRevealedShapeIds = new Set<string>()
 const viewerHintRevealedCellKeys = new Set<string>()
 let viewerHintCellPickResultHandler: ((result: ViewerHintCellResult) => void) | null = null
@@ -243,7 +243,7 @@ function renderSelectedShape() {
     ...shape,
     cells: rotatedCells,
   }, {
-    color: isValidPlacement ? getShapeDisplayColor(shape, shapeColorMode) : 0xff3344,
+    color: isValidPlacement ? getShapeRenderColor(shape) : 0xff3344,
     opacity: 0.58,
     edgeColor: 0xff2bd6,
     edgeOpacity: 0.98,
@@ -443,7 +443,7 @@ function setAppMode(mode: AppMode) {
   clearSelection()
 
   if (appMode === "viewer") {
-    viewerColorEnabled = false
+    shapeColorEnabled = false
     timerMode = "down"
     resetTimer()
     clearViewerProblemSelection()
@@ -1368,8 +1368,9 @@ async function deleteSelectedViewerProblem(): Promise<{ ok: boolean, message: st
   }
 }
 
-function toggleViewerColor() {
-  viewerColorEnabled = !viewerColorEnabled
+function toggleShapeColorVisibility() {
+  shapeColorEnabled = !shapeColorEnabled
+  renderSelectedShape()
   rebuildAllPlacedShapeGroups()
   refreshViewerState()
 }
@@ -1563,7 +1564,7 @@ function getViewerPanelState(): ViewerPanelState {
       id: puzzle.id,
       title: puzzle.title,
     })),
-    colorEnabled: viewerColorEnabled,
+    colorEnabled: shapeColorEnabled,
     timerText: getTimerText(),
     timerMode,
     timerRunning,
@@ -1895,10 +1896,17 @@ function rebuildAllPlacedShapeGroups() {
 
 function getPlacedShapeColor(shape: typeof shapeDefinitions[number]): number {
   if (
-    appMode === "viewer" &&
-    !viewerColorEnabled &&
+    !shapeColorEnabled &&
     !viewerHintRevealedShapeIds.has(shape.id)
   ) {
+    return 0xd9dee8
+  }
+
+  return getShapeRenderColor(shape)
+}
+
+function getShapeRenderColor(shape: typeof shapeDefinitions[number]): number {
+  if (!shapeColorEnabled) {
     return 0xd9dee8
   }
 
@@ -1912,7 +1920,7 @@ function getPlacedShapeCellColor(
 ): number | undefined {
   if (
     appMode !== "viewer" ||
-    viewerColorEnabled ||
+    shapeColorEnabled ||
     viewerHintRevealedShapeIds.has(shape.id)
   ) {
     return undefined
@@ -2161,7 +2169,7 @@ const shapeSelector = createShapeSelector({
   onReorderProblem: reorderSelectedViewerProblem,
   onReorderProblemToIndex: reorderSelectedViewerProblemToDisplayIndex,
   onDeleteProblem: deleteSelectedViewerProblem,
-  onToggleColor: toggleViewerColor,
+  onToggleColor: toggleShapeColorVisibility,
   onToggleHintShape: toggleViewerHintShape,
   onRevealHintCell: revealViewerHintCell,
   onResetHints: clearViewerHints,
