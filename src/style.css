@@ -672,13 +672,6 @@ button {
   border-radius: 3px;
 }
 
-.editor-tool-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
 .clear-selection-button {
   width: 100%;
   margin-bottom: 10px;
@@ -858,6 +851,25 @@ button {
   margin-top: 0;
   padding-top: 14px;
   border-top: 1px solid rgba(105, 114, 130, 0.28);
+}
+
+.visual-settings {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid rgba(105, 114, 130, 0.22);
+}
+
+.visual-settings-label {
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.visual-settings-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .data-tools-toggle-button {

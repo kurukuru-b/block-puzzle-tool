@@ -205,10 +205,6 @@ export function createShapeSelector({
   title.textContent = "Block Puzzle Tool"
   editorPanel.appendChild(title)
 
-  const editorToolRow = document.createElement("div")
-  editorToolRow.className = "editor-tool-row"
-  editorPanel.appendChild(editorToolRow)
-
   const shapeColorModeButton = document.createElement("button")
   shapeColorModeButton.type = "button"
   shapeColorModeButton.className = "secondary-action-button color-mode-button"
@@ -219,7 +215,6 @@ export function createShapeSelector({
     setPlacedShapes(latestPlacedShapes)
     onToggleShapeColorMode()
   })
-  editorToolRow.appendChild(shapeColorModeButton)
 
   const cellEdgesButton = document.createElement("button")
   cellEdgesButton.type = "button"
@@ -229,7 +224,6 @@ export function createShapeSelector({
     updateCellEdgesButton()
     onToggleCellEdges()
   })
-  editorToolRow.appendChild(cellEdgesButton)
 
   const coreMarkerButton = document.createElement("button")
   coreMarkerButton.type = "button"
@@ -239,7 +233,6 @@ export function createShapeSelector({
     updateCoreMarkerButton()
     onToggleCoreMarker()
   })
-  editorToolRow.appendChild(coreMarkerButton)
 
   const clearSelectionButton = document.createElement("button")
   clearSelectionButton.type = "button"
@@ -704,6 +697,24 @@ export function createShapeSelector({
     modeControls.appendChild(button)
     modeButtons.set(mode, button)
   }
+
+  const visualSettings = document.createElement("div")
+  visualSettings.className = "visual-settings"
+  dataControls.appendChild(visualSettings)
+
+  const visualSettingsLabel = document.createElement("span")
+  visualSettingsLabel.className = "visual-settings-label"
+  visualSettingsLabel.textContent = "Visual"
+  visualSettings.appendChild(visualSettingsLabel)
+
+  const visualSettingsButtons = document.createElement("div")
+  visualSettingsButtons.className = "visual-settings-buttons"
+  visualSettings.appendChild(visualSettingsButtons)
+  visualSettingsButtons.append(
+    shapeColorModeButton,
+    cellEdgesButton,
+    coreMarkerButton,
+  )
 
   const dataToolsToggleButton = document.createElement("button")
   dataToolsToggleButton.type = "button"
