@@ -433,12 +433,32 @@ button {
 }
 
 .problem-management {
-  grid-template-columns: minmax(0, 1fr) repeat(4, auto);
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+.problem-management-row {
+  display: grid;
+  gap: 8px;
   align-items: center;
 }
 
+.problem-management-row-move {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.problem-management-row-reorder {
+  grid-template-columns: auto auto minmax(64px, 1fr) auto;
+}
+
 .problem-management .danger-action-button {
-  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.danger-action-button.is-confirming {
+  border-color: rgba(185, 28, 28, 0.58);
+  color: #ffffff;
+  background: #dc2626;
 }
 
 .problem-label,

@@ -1169,6 +1169,12 @@ async function moveSelectedViewerProblemDifficulty(
 async function reorderSelectedViewerProblem(
   amount: number,
 ): Promise<{ ok: boolean, message: string }> {
+  return reorderSelectedViewerProblemToIndex(viewerProblemIndex + amount)
+}
+
+async function reorderSelectedViewerProblemToIndex(
+  nextIndex: number,
+): Promise<{ ok: boolean, message: string }> {
   const library = loadPuzzleLibrary()
   const puzzles = library[viewerDifficulty]
   const puzzle = puzzles[viewerProblemIndex]
@@ -1180,12 +1186,24 @@ async function reorderSelectedViewerProblem(
     }
   }
 
-  const nextIndex = viewerProblemIndex + amount
+  if (!Number.isInteger(nextIndex)) {
+    return {
+      ok: false,
+      message: "移動先のIndexを入力してください。",
+    }
+  }
 
   if (nextIndex < 0 || nextIndex >= puzzles.length) {
     return {
       ok: false,
-      message: amount < 0 ? "すでに先頭です。" : "すでに最後です。",
+      message: "移動先のIndexが範囲外です。",
+    }
+  }
+
+  if (nextIndex === viewerProblemIndex) {
+    return {
+      ok: false,
+      message: "同じIndexが指定されています。",
     }
   }
 
@@ -1218,6 +1236,12 @@ async function reorderSelectedViewerProblem(
       ? "Reordered in DB"
       : "Reordered locally",
   }
+}
+
+async function reorderSelectedViewerProblemToDisplayIndex(
+  displayIndex: number,
+): Promise<{ ok: boolean, message: string }> {
+  return reorderSelectedViewerProblemToIndex(displayIndex - 1)
 }
 
 async function deleteSelectedViewerProblem(): Promise<{ ok: boolean, message: string }> {
@@ -1918,6 +1942,7 @@ const shapeSelector = createShapeSelector({
   onRenameProblem: renameSelectedViewerProblem,
   onMoveProblemDifficulty: moveSelectedViewerProblemDifficulty,
   onReorderProblem: reorderSelectedViewerProblem,
+  onReorderProblemToIndex: reorderSelectedViewerProblemToDisplayIndex,
   onDeleteProblem: deleteSelectedViewerProblem,
   onToggleColor: toggleViewerColor,
   onTimerStartStop: startStopTimer,

@@ -72,6 +72,7 @@ type CreateShapeSelectorParams = {
   onRenameProblem: (title: string) => MaybePromise<ImportPuzzleResult>
   onMoveProblemDifficulty: (difficulty: PuzzleDifficulty) => MaybePromise<ImportPuzzleResult>
   onReorderProblem: (amount: number) => MaybePromise<ImportPuzzleResult>
+  onReorderProblemToIndex: (index: number) => MaybePromise<ImportPuzzleResult>
   onDeleteProblem: () => MaybePromise<ImportPuzzleResult>
   onToggleColor: () => void
   onTimerStartStop: () => void
@@ -127,6 +128,7 @@ export function createShapeSelector({
   onRenameProblem,
   onMoveProblemDifficulty,
   onReorderProblem,
+  onReorderProblemToIndex,
   onDeleteProblem,
   onToggleColor,
   onTimerStartStop,
@@ -548,25 +550,34 @@ export function createShapeSelector({
   problemTitleInput.type = "text"
   problemTitleInput.className = "problem-title-input"
   problemTitleInput.placeholder = "Problem title"
+  problemTitleInput.addEventListener("input", resetDeleteConfirmation)
   problemManagement.appendChild(problemTitleInput)
+
+  const moveManagementRow = document.createElement("div")
+  moveManagementRow.className = "problem-management-row problem-management-row-move"
+  problemManagement.appendChild(moveManagementRow)
 
   const renameProblemButton = document.createElement("button")
   renameProblemButton.type = "button"
   renameProblemButton.className = "secondary-action-button"
   renameProblemButton.textContent = "Rename"
   renameProblemButton.addEventListener("click", async () => {
+    resetDeleteConfirmation()
     const result = await onRenameProblem(problemTitleInput.value)
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
-  problemManagement.appendChild(renameProblemButton)
+  moveManagementRow.appendChild(renameProblemButton)
 
   const moveDifficultySelect = document.createElement("select")
   moveDifficultySelect.className = "problem-difficulty-select"
   moveDifficultySelect.setAttribute("aria-label", "Move problem difficulty")
-  moveDifficultySelect.addEventListener("change", updateMoveProblemButtonState)
-  problemManagement.appendChild(moveDifficultySelect)
+  moveDifficultySelect.addEventListener("change", () => {
+    resetDeleteConfirmation()
+    updateMoveProblemButtonState()
+  })
+  moveManagementRow.appendChild(moveDifficultySelect)
 
   for (const difficulty of PUZZLE_DIFFICULTIES) {
     const option = document.createElement("option")
@@ -580,48 +591,101 @@ export function createShapeSelector({
   moveProblemButton.className = "secondary-action-button"
   moveProblemButton.textContent = "Move"
   moveProblemButton.addEventListener("click", async () => {
+    resetDeleteConfirmation()
     const result = await onMoveProblemDifficulty(moveDifficultySelect.value as PuzzleDifficulty)
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
-  problemManagement.appendChild(moveProblemButton)
+  moveManagementRow.appendChild(moveProblemButton)
+
+  const reorderManagementRow = document.createElement("div")
+  reorderManagementRow.className = "problem-management-row problem-management-row-reorder"
+  problemManagement.appendChild(reorderManagementRow)
 
   const reorderUpButton = document.createElement("button")
   reorderUpButton.type = "button"
   reorderUpButton.className = "secondary-action-button"
   reorderUpButton.textContent = "Up"
   reorderUpButton.addEventListener("click", async () => {
+    resetDeleteConfirmation()
     const result = await onReorderProblem(-1)
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
-  problemManagement.appendChild(reorderUpButton)
+  reorderManagementRow.appendChild(reorderUpButton)
 
   const reorderDownButton = document.createElement("button")
   reorderDownButton.type = "button"
   reorderDownButton.className = "secondary-action-button"
   reorderDownButton.textContent = "Down"
   reorderDownButton.addEventListener("click", async () => {
+    resetDeleteConfirmation()
     const result = await onReorderProblem(1)
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
-  problemManagement.appendChild(reorderDownButton)
+  reorderManagementRow.appendChild(reorderDownButton)
+
+  const reorderIndexInput = document.createElement("input")
+  reorderIndexInput.type = "number"
+  reorderIndexInput.min = "1"
+  reorderIndexInput.step = "1"
+  reorderIndexInput.className = "problem-number-input reorder-index-input"
+  reorderIndexInput.placeholder = "Index"
+  reorderIndexInput.setAttribute("aria-label", "Move selected problem to index")
+  reorderManagementRow.appendChild(reorderIndexInput)
+
+  const reorderIndexButton = document.createElement("button")
+  reorderIndexButton.type = "button"
+  reorderIndexButton.className = "secondary-action-button"
+  reorderIndexButton.textContent = "Go"
+  reorderIndexButton.addEventListener("click", async () => {
+    resetDeleteConfirmation()
+    const index = Number.parseInt(reorderIndexInput.value, 10)
+    const result = await onReorderProblemToIndex(index)
+
+    problemStatus.textContent = result.message
+    problemStatus.classList.toggle("is-error", !result.ok)
+  })
+  reorderManagementRow.appendChild(reorderIndexButton)
+
+  reorderIndexInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      reorderIndexButton.click()
+    } else {
+      resetDeleteConfirmation()
+    }
+  })
 
   const deleteProblemButton = document.createElement("button")
   deleteProblemButton.type = "button"
   deleteProblemButton.className = "secondary-action-button danger-action-button"
   deleteProblemButton.textContent = "Delete"
+  let isDeleteConfirmationPending = false
   deleteProblemButton.addEventListener("click", async () => {
+    if (!isDeleteConfirmationPending) {
+      isDeleteConfirmationPending = true
+      deleteProblemButton.textContent = "Are you sure?"
+      deleteProblemButton.classList.add("is-confirming")
+      return
+    }
+
     const result = await onDeleteProblem()
 
+    resetDeleteConfirmation()
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
   problemManagement.appendChild(deleteProblemButton)
+
+  root.addEventListener("pointerdown", (event) => {
+    if (event.target !== deleteProblemButton) {
+      resetDeleteConfirmation()
+    }
+  })
 
   const problemStatus = document.createElement("span")
   problemStatus.className = "problem-status"
@@ -993,6 +1057,9 @@ export function createShapeSelector({
     reorderUpButton.disabled = state.selectedPuzzleId === null || state.problemIndex <= 0
     reorderDownButton.disabled = state.selectedPuzzleId === null ||
       state.problemIndex >= state.problemCount - 1
+    reorderIndexInput.disabled = state.selectedPuzzleId === null
+    reorderIndexInput.max = String(Math.max(1, state.problemCount))
+    reorderIndexButton.disabled = state.selectedPuzzleId === null
 
     if (document.activeElement !== problemTitleInput) {
       problemTitleInput.value = state.selectedPuzzleId ? state.problemTitle : ""
@@ -1027,6 +1094,12 @@ export function createShapeSelector({
     }
 
     registerButton.textContent = "Register"
+  }
+
+  function resetDeleteConfirmation() {
+    isDeleteConfirmationPending = false
+    deleteProblemButton.textContent = "Delete"
+    deleteProblemButton.classList.remove("is-confirming")
   }
 
   function updateMoveProblemButtonState() {
