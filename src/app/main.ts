@@ -59,6 +59,7 @@ import {
 
 await requirePasswordAccess()
 
+const APP_VERSION = import.meta.env.VITE_APP_COMMIT ?? "dev"
 const mainScene = createMainScene()
 const editorAxisGuide = createEditorAxisGuide()
 
@@ -631,7 +632,42 @@ function editSelectedPlacedShape() {
 }
 
 function exportPuzzle(): string {
-  const puzzle = createPuzzleExport(
+  const puzzle = createCurrentPuzzleExport()
+
+  validateImportPuzzle(puzzle)
+  validateSupportedPuzzle(puzzle)
+
+  return stringifyPuzzleExport(puzzle)
+}
+
+function validateEditorBoard(): { ok: boolean, message: string } {
+  try {
+    if (placedShapes.length === 0) {
+      return {
+        ok: false,
+        message: "配置されているパーツがありません。",
+      }
+    }
+
+    const puzzle = createCurrentPuzzleExport()
+
+    validateImportPuzzle(puzzle)
+    validateSupportedPuzzle(puzzle)
+
+    return {
+      ok: true,
+      message: `OK: ${placedShapes.length} piece(s), ${getCurrentOccupiedCellCount()} cell(s)`,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "配置チェックに失敗しました。",
+    }
+  }
+}
+
+function createCurrentPuzzleExport(): PuzzleExport {
+  return createPuzzleExport(
     DEFAULT_GRID_BOUNDS,
     placedShapes.map((shape) => ({
       shapeId: shape.shapeId,
@@ -639,11 +675,27 @@ function exportPuzzle(): string {
       rotation: shape.rotation,
     })),
   )
+}
 
-  validateImportPuzzle(puzzle)
-  validateSupportedPuzzle(puzzle)
+function getCurrentOccupiedCellCount(): number {
+  const cells = new Set<string>()
 
-  return stringifyPuzzleExport(puzzle)
+  for (const placedShape of placedShapes) {
+    const shape = shapeDefinitions.find((definition) => definition.id === placedShape.shapeId)
+
+    if (!shape) {
+      continue
+    }
+
+    for (const pos of getPlacedCellPositions(
+      placedShape.origin,
+      rotateShapeCells(shape.cells, placedShape.rotation),
+    )) {
+      cells.add(gridPosKey(pos))
+    }
+  }
+
+  return cells.size
 }
 
 function importPuzzle(source: string): { ok: boolean, message: string } {
@@ -685,14 +737,7 @@ async function registerPuzzle(
       throw new Error("登録できる配置がありません。")
     }
 
-    const puzzle = createPuzzleExport(
-      DEFAULT_GRID_BOUNDS,
-      placedShapes.map((shape) => ({
-        shapeId: shape.shapeId,
-        origin: shape.origin,
-        rotation: shape.rotation,
-      })),
-    )
+    const puzzle = createCurrentPuzzleExport()
 
     validateImportPuzzle(puzzle)
     validateSupportedPuzzle(puzzle)
@@ -1025,6 +1070,35 @@ function selectRandomViewerProblem() {
   viewerProblemSelected = true
   loadSelectedViewerPuzzle()
   refreshViewerState()
+}
+
+async function refreshPuzzleLibrary(): Promise<{ ok: boolean, message: string }> {
+  const selectedPuzzleId = viewerProblemSelected
+    ? loadPuzzleLibrary()[viewerDifficulty][viewerProblemIndex]?.id
+    : null
+  const result = await puzzleLibraryStore.syncFromRemote()
+  const puzzles = loadPuzzleLibrary()[viewerDifficulty]
+
+  if (selectedPuzzleId) {
+    const nextIndex = puzzles.findIndex((puzzle) => puzzle.id === selectedPuzzleId)
+
+    viewerProblemSelected = nextIndex !== -1
+    viewerProblemIndex = nextIndex === -1 ? 0 : nextIndex
+  } else {
+    viewerProblemIndex = clamp(viewerProblemIndex, 0, Math.max(0, puzzles.length - 1))
+  }
+
+  loadSelectedViewerPuzzle()
+  refreshViewerState()
+
+  return result.ok
+    ? {
+        ok: true,
+        message: puzzleLibraryStore.isRemoteConfigured()
+          ? `Reloaded ${puzzles.length} puzzle(s).`
+          : "Using local puzzle storage.",
+      }
+    : result
 }
 
 function selectViewerProblem(puzzleId: string) {
@@ -2061,6 +2135,7 @@ if (shapeDefinitions.length === 0) {
 
 const shapeSelector = createShapeSelector({
   shapes: shapeDefinitions,
+  appVersion: APP_VERSION,
   initialMode: appMode,
   initialViewerState: getViewerPanelState(),
   selectedShapeId,
@@ -2078,6 +2153,7 @@ const shapeSelector = createShapeSelector({
   onSelectDifficulty: selectViewerDifficulty,
   onMoveProblem: moveViewerProblem,
   onRandomProblem: selectRandomViewerProblem,
+  onRefreshPuzzles: refreshPuzzleLibrary,
   onSelectProblem: selectViewerProblem,
   onClearViewerProblem: clearViewerProblemSelection,
   onRenameProblem: renameSelectedViewerProblem,
@@ -2099,6 +2175,7 @@ const shapeSelector = createShapeSelector({
   onMovePosition: movePreviewOrigin,
   onPlaceShape: placeSelectedShape,
   onResetBoard: resetEditorBoard,
+  onValidateBoard: validateEditorBoard,
   onUndo: undoEditorAction,
   onRedo: redoEditorAction,
   onDeletePlacedShape: deleteSelectedPlacedShape,

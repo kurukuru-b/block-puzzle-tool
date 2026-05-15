@@ -67,6 +67,7 @@ export type TimerMode = "up" | "down"
 
 type CreateShapeSelectorParams = {
   shapes: ShapeDefinition[]
+  appVersion: string
   initialMode: AppMode
   initialViewerState: ViewerPanelState
   selectedShapeId: string | null
@@ -84,6 +85,7 @@ type CreateShapeSelectorParams = {
   onSelectDifficulty: (difficulty: PuzzleDifficulty) => void
   onMoveProblem: (amount: number) => void
   onRandomProblem: () => void
+  onRefreshPuzzles: () => MaybePromise<ImportPuzzleResult>
   onSelectProblem: (puzzleId: string) => void
   onClearViewerProblem: () => void
   onRenameProblem: (title: string) => MaybePromise<ImportPuzzleResult>
@@ -107,6 +109,7 @@ type CreateShapeSelectorParams = {
   onMovePosition: (axis: GridAxis, amount: number) => GridPos
   onPlaceShape: () => boolean
   onResetBoard: () => void
+  onValidateBoard: () => ImportPuzzleResult
   onUndo: () => void
   onRedo: () => void
   onDeletePlacedShape: () => void
@@ -129,6 +132,7 @@ type ShapeSelector = {
 
 export function createShapeSelector({
   shapes,
+  appVersion,
   initialMode,
   initialViewerState,
   selectedShapeId,
@@ -146,6 +150,7 @@ export function createShapeSelector({
   onSelectDifficulty,
   onMoveProblem,
   onRandomProblem,
+  onRefreshPuzzles,
   onSelectProblem,
   onClearViewerProblem,
   onRenameProblem,
@@ -167,6 +172,7 @@ export function createShapeSelector({
   onMovePosition,
   onPlaceShape,
   onResetBoard,
+  onValidateBoard,
   onUndo,
   onRedo,
   onDeletePlacedShape,
@@ -285,9 +291,8 @@ export function createShapeSelector({
   let nextHintEntryId = 1
   let hintEntries: HintEntry[] = []
 
-  const title = document.createElement("h1")
-  title.textContent = "Block Puzzle Tool"
-  editorPanel.appendChild(title)
+  const editorHeader = createPanelHeader("TRI²CUBE App", appVersion)
+  editorPanel.appendChild(editorHeader)
 
   const shapeColorModeButton = document.createElement("button")
   shapeColorModeButton.type = "button"
@@ -483,6 +488,23 @@ export function createShapeSelector({
   resetBoardButton.addEventListener("click", onResetBoard)
   boardControls.appendChild(resetBoardButton)
 
+  const validateBoardButton = document.createElement("button")
+  validateBoardButton.type = "button"
+  validateBoardButton.className = "secondary-action-button"
+  validateBoardButton.textContent = "Check"
+  boardControls.appendChild(validateBoardButton)
+
+  const boardValidationStatus = document.createElement("span")
+  boardValidationStatus.className = "board-validation-status"
+  editorPanel.appendChild(boardValidationStatus)
+
+  validateBoardButton.addEventListener("click", () => {
+    const result = onValidateBoard()
+
+    boardValidationStatus.textContent = result.message
+    boardValidationStatus.classList.toggle("is-error", !result.ok)
+  })
+
   const selectedControls = document.createElement("div")
   selectedControls.className = "selected-controls"
   editorPanel.appendChild(selectedControls)
@@ -509,9 +531,8 @@ export function createShapeSelector({
   placedList.className = "placed-list"
   editorPanel.appendChild(placedList)
 
-  const viewerTitle = document.createElement("h1")
-  viewerTitle.textContent = "Viewer"
-  viewerPanel.appendChild(viewerTitle)
+  const viewerHeader = createPanelHeader("TRI²CUBE App", appVersion)
+  viewerPanel.appendChild(viewerHeader)
 
   const clearViewerProblemButton = document.createElement("button")
   clearViewerProblemButton.type = "button"
@@ -567,6 +588,19 @@ export function createShapeSelector({
   randomProblemButton.setAttribute("aria-label", "Random problem")
   randomProblemButton.addEventListener("click", onRandomProblem)
   problemControls.appendChild(randomProblemButton)
+
+  const refreshProblemButton = document.createElement("button")
+  refreshProblemButton.type = "button"
+  refreshProblemButton.className = "secondary-action-button refresh-problem-button"
+  refreshProblemButton.textContent = "Reload"
+  refreshProblemButton.setAttribute("aria-label", "Reload problems from database")
+  refreshProblemButton.addEventListener("click", async () => {
+    const result = await onRefreshPuzzles()
+
+    problemStatus.textContent = result.message
+    problemStatus.classList.toggle("is-error", !result.ok)
+  })
+  problemControls.appendChild(refreshProblemButton)
 
   const problemLookup = document.createElement("div")
   problemLookup.className = "problem-lookup"
@@ -1158,6 +1192,7 @@ export function createShapeSelector({
     previousProblemButton.disabled = state.problemCount <= 1
     nextProblemButton.disabled = state.problemCount <= 1
     randomProblemButton.disabled = state.problemCount === 0
+    refreshProblemButton.disabled = false
     clearViewerProblemButton.disabled = state.selectedPuzzleId === null
     problemNumberInput.disabled = state.problemCount === 0
     problemNumberInput.max = String(Math.max(1, state.problemCount))
@@ -1214,6 +1249,22 @@ export function createShapeSelector({
     }
 
     registerButton.textContent = "Register"
+  }
+
+  function createPanelHeader(titleText: string, version: string): HTMLElement {
+    const header = document.createElement("div")
+    header.className = "panel-header"
+
+    const title = document.createElement("h1")
+    title.textContent = titleText
+    header.appendChild(title)
+
+    const versionBadge = document.createElement("span")
+    versionBadge.className = "version-badge"
+    versionBadge.textContent = `ver. ${version}`
+    header.appendChild(versionBadge)
+
+    return header
   }
 
   function renderHintPieceCount() {
@@ -1370,7 +1421,7 @@ export function createShapeSelector({
   }
 
   function renderHintEntries() {
-    hintResultTitle.textContent = "Hints"
+    hintResultTitle.textContent = `Hints (${hintEntries.length})`
     hintResultBody.replaceChildren()
     hintResultPanel.classList.toggle("is-visible", hintEntries.length > 0)
 
