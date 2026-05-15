@@ -443,6 +443,52 @@ export function createShapeSelector({
   clearViewerProblemButton.addEventListener("click", onClearViewerProblem)
   problemControls.appendChild(clearViewerProblemButton)
 
+  const problemLookup = document.createElement("div")
+  problemLookup.className = "problem-lookup"
+  viewerPanel.appendChild(problemLookup)
+
+  const problemNumberInput = document.createElement("input")
+  problemNumberInput.type = "number"
+  problemNumberInput.min = "1"
+  problemNumberInput.step = "1"
+  problemNumberInput.className = "problem-number-input"
+  problemNumberInput.placeholder = "#"
+  problemNumberInput.setAttribute("aria-label", "Problem number")
+  problemLookup.appendChild(problemNumberInput)
+
+  const problemNumberButton = document.createElement("button")
+  problemNumberButton.type = "button"
+  problemNumberButton.className = "secondary-action-button"
+  problemNumberButton.textContent = "Go"
+  problemNumberButton.addEventListener("click", selectProblemByNumber)
+  problemLookup.appendChild(problemNumberButton)
+
+  const problemSearchInput = document.createElement("input")
+  problemSearchInput.type = "search"
+  problemSearchInput.className = "problem-search-input"
+  problemSearchInput.placeholder = "Search title"
+  problemSearchInput.setAttribute("aria-label", "Search problem title")
+  problemLookup.appendChild(problemSearchInput)
+
+  const problemSearchButton = document.createElement("button")
+  problemSearchButton.type = "button"
+  problemSearchButton.className = "secondary-action-button"
+  problemSearchButton.textContent = "Find"
+  problemSearchButton.addEventListener("click", selectProblemByTitle)
+  problemLookup.appendChild(problemSearchButton)
+
+  problemNumberInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      selectProblemByNumber()
+    }
+  })
+
+  problemSearchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      selectProblemByTitle()
+    }
+  })
+
   const problemTitle = document.createElement("span")
   problemTitle.className = "problem-title"
   viewerPanel.appendChild(problemTitle)
@@ -825,6 +871,11 @@ export function createShapeSelector({
     nextProblemButton.disabled = state.problemCount <= 1
     randomProblemButton.disabled = state.problemCount === 0
     clearViewerProblemButton.disabled = state.selectedPuzzleId === null
+    problemNumberInput.disabled = state.problemCount === 0
+    problemNumberInput.max = String(Math.max(1, state.problemCount))
+    problemNumberButton.disabled = state.problemCount === 0
+    problemSearchInput.disabled = state.problemCount === 0
+    problemSearchButton.disabled = state.problemCount === 0
     problemTitleInput.disabled = state.selectedPuzzleId === null
     renameProblemButton.disabled = state.selectedPuzzleId === null
     deleteProblemButton.disabled = state.selectedPuzzleId === null
@@ -878,6 +929,56 @@ export function createShapeSelector({
 
     problemListSignature = nextSignature
     rebuildProblemList(state)
+  }
+
+  function selectProblemByNumber() {
+    const problemNumber = Number.parseInt(problemNumberInput.value, 10)
+
+    if (!Number.isInteger(problemNumber)) {
+      setProblemLookupError("Enter a problem number.")
+      return
+    }
+
+    const puzzle = latestViewerState.puzzles[problemNumber - 1]
+
+    if (!puzzle) {
+      setProblemLookupError(`Problem #${problemNumber} was not found.`)
+      return
+    }
+
+    onSelectProblem(puzzle.id)
+    setProblemLookupMessage(`Selected #${problemNumber}.`)
+  }
+
+  function selectProblemByTitle() {
+    const query = problemSearchInput.value.trim().toLowerCase()
+
+    if (!query) {
+      setProblemLookupError("Enter a title search.")
+      return
+    }
+
+    const index = latestViewerState.puzzles.findIndex((puzzle) =>
+      puzzle.title.toLowerCase().includes(query)
+    )
+
+    if (index === -1) {
+      setProblemLookupError(`No title matched "${problemSearchInput.value.trim()}".`)
+      return
+    }
+
+    onSelectProblem(latestViewerState.puzzles[index]!.id)
+    setProblemLookupMessage(`Selected #${index + 1}.`)
+  }
+
+  function setProblemLookupMessage(message: string) {
+    problemStatus.textContent = message
+    problemStatus.classList.remove("is-error")
+  }
+
+  function setProblemLookupError(message: string) {
+    problemStatus.textContent = message
+    problemStatus.classList.add("is-error")
   }
 
   function rebuildProblemList(state: ViewerPanelState) {

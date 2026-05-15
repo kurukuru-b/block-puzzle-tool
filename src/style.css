@@ -300,6 +300,7 @@ button {
 }
 
 .problem-controls,
+.problem-lookup,
 .problem-list,
 .problem-management,
 .viewer-actions,
@@ -324,6 +325,11 @@ button {
 .clear-viewer-problem-button {
   grid-column: 1 / -1;
   width: 100%;
+}
+
+.problem-lookup {
+  grid-template-columns: minmax(54px, 0.45fr) auto minmax(0, 1fr) auto;
+  align-items: center;
 }
 
 .viewer-actions {
@@ -437,6 +443,23 @@ button {
   font-weight: 700;
 }
 
+.problem-number-input,
+.problem-search-input {
+  min-width: 0;
+  height: 34px;
+  border: 1px solid rgba(105, 114, 130, 0.28);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.problem-number-input {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
 .problem-difficulty-select {
   min-width: 0;
   height: 34px;
@@ -450,6 +473,8 @@ button {
 }
 
 .problem-title-input:focus-visible,
+.problem-number-input:focus-visible,
+.problem-search-input:focus-visible,
 .problem-difficulty-select:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
@@ -525,6 +550,8 @@ button {
 
 .secondary-action-button:disabled,
 .problem-title-input:disabled,
+.problem-number-input:disabled,
+.problem-search-input:disabled,
 .problem-difficulty-select:disabled {
   border-color: rgba(105, 114, 130, 0.16);
   color: #9ca3af;
