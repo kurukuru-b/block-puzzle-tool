@@ -1635,6 +1635,10 @@ function createPlacedShapeSelectionController() {
 
 function createEditorKeyboardController() {
   window.addEventListener("keydown", (event) => {
+    if (event.isComposing) {
+      return
+    }
+
     if (isTypingTarget(event.target)) {
       return
     }
@@ -1661,7 +1665,15 @@ function createEditorKeyboardController() {
       return
     }
 
-    if (!selectedPlacedShapeId) {
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      return
+    }
+
+    if (handleEditorMovementKey(event)) {
+      return
+    }
+
+    if (handleEditorRotationKey(event)) {
       return
     }
 
@@ -1676,6 +1688,79 @@ function createEditorKeyboardController() {
       editSelectedPlacedShape()
     }
   })
+}
+
+function handleEditorMovementKey(event: KeyboardEvent): boolean {
+  const movement = getEditorMovementForKey(event)
+
+  if (!movement) {
+    return false
+  }
+
+  if (!selectedShapeId && !selectedPlacedShapeId) {
+    return false
+  }
+
+  event.preventDefault()
+  movePreviewOrigin(movement.axis, movement.amount)
+
+  return true
+}
+
+function handleEditorRotationKey(event: KeyboardEvent): boolean {
+  const axis = getEditorRotationAxisForKey(event)
+
+  if (!axis) {
+    return false
+  }
+
+  if (!selectedShapeId && !selectedPlacedShapeId) {
+    return false
+  }
+
+  event.preventDefault()
+  rotateSelectedShape(axis)
+
+  return true
+}
+
+function getEditorMovementForKey(
+  event: KeyboardEvent,
+): { axis: "x" | "y" | "z", amount: number } | null {
+  switch (event.code) {
+    case "KeyA":
+    case "ArrowLeft":
+      return { axis: "x", amount: -1 }
+    case "KeyD":
+    case "ArrowRight":
+      return { axis: "x", amount: 1 }
+    case "KeyW":
+    case "ArrowUp":
+      return { axis: "z", amount: -1 }
+    case "KeyS":
+    case "ArrowDown":
+      return { axis: "z", amount: 1 }
+    case "Space":
+      return { axis: "y", amount: 1 }
+    case "ShiftLeft":
+    case "ShiftRight":
+      return { axis: "y", amount: -1 }
+    default:
+      return null
+  }
+}
+
+function getEditorRotationAxisForKey(event: KeyboardEvent): RotationAxis | null {
+  switch (event.code) {
+    case "KeyR":
+      return "x"
+    case "KeyF":
+      return "y"
+    case "KeyV":
+      return "z"
+    default:
+      return null
+  }
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
