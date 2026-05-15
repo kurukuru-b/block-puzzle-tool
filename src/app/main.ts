@@ -234,6 +234,7 @@ function renderSelectedShape() {
     color: isValidPlacement ? getShapeDisplayColor(shape, shapeColorMode) : 0xff3344,
     opacity: 0.58,
   })
+  activeShapeGroup.add(createPreviewRotationGuide(rotatedCells))
 
   const worldPos = gridToWorld(
     previewOrigin,
@@ -242,6 +243,109 @@ function renderSelectedShape() {
 
   activeShapeGroup.position.set(worldPos.x, worldPos.y, worldPos.z)
   mainScene.scene.add(activeShapeGroup)
+}
+
+function createPreviewRotationGuide(cells: Array<{ x: number, y: number, z: number }>): THREE.Group {
+  const guide = new THREE.Group()
+  const bounds = getLocalCellBounds(cells)
+  const center = new THREE.Vector3(
+    (bounds.minX + bounds.maxX) / 2,
+    (bounds.minY + bounds.maxY) / 2,
+    (bounds.minZ + bounds.maxZ) / 2,
+  )
+  const radius = Math.max(
+    bounds.maxX - bounds.minX + 1,
+    bounds.maxY - bounds.minY + 1,
+    bounds.maxZ - bounds.minZ + 1,
+  ) * 0.62 + 0.42
+
+  guide.add(createRotationRing("x", center, radius, 0xef4444))
+  guide.add(createRotationRing("y", center, radius + 0.07, 0x22c55e))
+  guide.add(createRotationRing("z", center, radius + 0.14, 0x2563eb))
+
+  return guide
+}
+
+function createRotationRing(
+  axis: "x" | "y" | "z",
+  center: THREE.Vector3,
+  radius: number,
+  color: number,
+): THREE.Group {
+  const ring = new THREE.Group()
+  const material = new THREE.MeshBasicMaterial({
+    color,
+    opacity: 0.82,
+    transparent: true,
+    depthTest: false,
+  })
+  const geometry = new THREE.TorusGeometry(radius, 0.025, 8, 64)
+  const mesh = new THREE.Mesh(geometry, material)
+
+  mesh.renderOrder = 4
+  mesh.position.copy(center)
+
+  if (axis === "x") {
+    mesh.rotation.y = Math.PI / 2
+  } else if (axis === "y") {
+    mesh.rotation.x = Math.PI / 2
+  }
+
+  ring.add(mesh)
+
+  const arrow = createRotationArrow(axis, center, radius, color)
+
+  ring.add(arrow)
+
+  return ring
+}
+
+function createRotationArrow(
+  axis: "x" | "y" | "z",
+  center: THREE.Vector3,
+  radius: number,
+  color: number,
+): THREE.Mesh {
+  const theta = Math.PI / 4
+  const cone = new THREE.Mesh(
+    new THREE.ConeGeometry(0.12, 0.26, 16),
+    new THREE.MeshBasicMaterial({
+      color,
+      opacity: 0.92,
+      transparent: true,
+      depthTest: false,
+    }),
+  )
+  const position = new THREE.Vector3()
+  const tangent = new THREE.Vector3()
+
+  if (axis === "x") {
+    position.set(center.x, center.y + Math.cos(theta) * radius, center.z + Math.sin(theta) * radius)
+    tangent.set(0, -Math.sin(theta), Math.cos(theta))
+  } else if (axis === "y") {
+    position.set(center.x + Math.cos(theta) * radius, center.y, center.z + Math.sin(theta) * radius)
+    tangent.set(Math.sin(theta), 0, -Math.cos(theta))
+  } else {
+    position.set(center.x + Math.cos(theta) * radius, center.y + Math.sin(theta) * radius, center.z)
+    tangent.set(-Math.sin(theta), Math.cos(theta), 0)
+  }
+
+  cone.position.copy(position)
+  cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent.normalize())
+  cone.renderOrder = 5
+
+  return cone
+}
+
+function getLocalCellBounds(cells: Array<{ x: number, y: number, z: number }>) {
+  return {
+    minX: Math.min(...cells.map((cell) => cell.x)),
+    maxX: Math.max(...cells.map((cell) => cell.x)),
+    minY: Math.min(...cells.map((cell) => cell.y)),
+    maxY: Math.max(...cells.map((cell) => cell.y)),
+    minZ: Math.min(...cells.map((cell) => cell.z)),
+    maxZ: Math.max(...cells.map((cell) => cell.z)),
+  }
 }
 
 function setAppMode(mode: AppMode) {
@@ -377,8 +481,7 @@ function placeSelectedShape(): boolean {
   })
 
   refreshPlacedShapeState()
-  selectNextAvailableShape()
-  renderSelectedShape()
+  clearSelection()
 
   return true
 }
@@ -1184,19 +1287,6 @@ function canUseSelectedShape(): boolean {
 
 function isShapePlaced(shapeId: string): boolean {
   return placedShapes.some((shape) => shape.shapeId === shapeId)
-}
-
-function selectNextAvailableShape() {
-  const nextShape = shapeDefinitions.find((shape) => !isShapePlaced(shape.id))
-
-  if (!nextShape) {
-    clearSelection()
-    return
-  }
-
-  selectedShapeId = nextShape.id
-  selectedRotation = { x: 0, y: 0, z: 0 }
-  updateSelectedShapeControl?.(selectedShapeId)
 }
 
 function validateImportPuzzle(puzzle: PuzzleExport) {
