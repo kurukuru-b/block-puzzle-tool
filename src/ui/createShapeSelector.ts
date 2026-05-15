@@ -55,8 +55,10 @@ type CreateShapeSelectorParams = {
   selectedShapeId: string | null
   initialPosition: GridPos
   initialShapeColorMode: ShapeColorMode
+  initialCellEdgesEnabled: boolean
   onModeChange: (mode: AppMode) => void
   onToggleShapeColorMode: () => void
+  onToggleCellEdges: () => void
   onSelect: (shapeId: string) => void
   onClearSelection: () => void
   onSelectPlacedShape: (placedShapeId: string) => void
@@ -105,8 +107,10 @@ export function createShapeSelector({
   selectedShapeId,
   initialPosition,
   initialShapeColorMode,
+  initialCellEdgesEnabled,
   onModeChange,
   onToggleShapeColorMode,
+  onToggleCellEdges,
   onSelect,
   onClearSelection,
   onSelectPlacedShape,
@@ -178,6 +182,7 @@ export function createShapeSelector({
   let latestPlacedShapes: PlacedShapeSummary[] = []
   let problemListSignature = ""
   let shapeColorMode = initialShapeColorMode
+  let cellEdgesEnabled = initialCellEdgesEnabled
 
   const title = document.createElement("h1")
   title.textContent = "Block Puzzle Tool"
@@ -194,6 +199,16 @@ export function createShapeSelector({
     onToggleShapeColorMode()
   })
   editorPanel.appendChild(shapeColorModeButton)
+
+  const cellEdgesButton = document.createElement("button")
+  cellEdgesButton.type = "button"
+  cellEdgesButton.className = "secondary-action-button cell-edges-button"
+  cellEdgesButton.addEventListener("click", () => {
+    cellEdgesEnabled = !cellEdgesEnabled
+    updateCellEdgesButton()
+    onToggleCellEdges()
+  })
+  editorPanel.appendChild(cellEdgesButton)
 
   const clearSelectionButton = document.createElement("button")
   clearSelectionButton.type = "button"
@@ -246,6 +261,7 @@ export function createShapeSelector({
   }
 
   updateShapeColorModeButton()
+  updateCellEdgesButton()
 
   const rotationControls = document.createElement("div")
   rotationControls.className = "rotation-controls"
@@ -1057,6 +1073,18 @@ export function createShapeSelector({
       "aria-label",
       shapeColorMode === "new" ? "Switch to old colors" : "Switch to new colors",
     )
+  }
+
+  function updateCellEdgesButton() {
+    cellEdgesButton.textContent = cellEdgesEnabled
+      ? "Edges On"
+      : "Edges Off"
+    cellEdgesButton.setAttribute(
+      "aria-label",
+      cellEdgesEnabled ? "Hide cell edges" : "Show cell edges",
+    )
+    cellEdgesButton.classList.toggle("is-selected", cellEdgesEnabled)
+    cellEdgesButton.setAttribute("aria-pressed", String(cellEdgesEnabled))
   }
 
   function updateShapeButtonAppearances() {

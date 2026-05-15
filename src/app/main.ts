@@ -85,6 +85,7 @@ let viewerProblemIndex = 0
 let viewerProblemSelected = false
 let viewerColorEnabled = false
 let shapeColorMode: ShapeColorMode = "new"
+let cellEdgesEnabled = true
 let timerMode: TimerMode = "down"
 let timerRunning = false
 let timerElapsedSeconds = 0
@@ -233,6 +234,9 @@ function renderSelectedShape() {
   }, {
     color: isValidPlacement ? getShapeDisplayColor(shape, shapeColorMode) : 0xff3344,
     opacity: 0.58,
+    edgeColor: 0x0f172a,
+    edgeOpacity: 0.86,
+    showEdges: cellEdgesEnabled,
   })
   activeShapeGroup.add(createPreviewRotationGuide(rotatedCells))
 
@@ -832,6 +836,9 @@ function addPlacedShape(placedShape: PlacedShape) {
     cells: rotatedCells,
   }, {
     color: getPlacedShapeColor(shape),
+    edgeColor: 0x0f172a,
+    edgeOpacity: 0.82,
+    showEdges: cellEdgesEnabled,
   })
   const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
 
@@ -1169,6 +1176,12 @@ function toggleViewerColor() {
 
 function toggleShapeColorMode() {
   shapeColorMode = shapeColorMode === "new" ? "old" : "new"
+  rebuildAllPlacedShapeGroups()
+  renderSelectedShape()
+}
+
+function toggleCellEdges() {
+  cellEdgesEnabled = !cellEdgesEnabled
   rebuildAllPlacedShapeGroups()
   renderSelectedShape()
 }
@@ -1540,6 +1553,9 @@ function rebuildPlacedShapeGroup(placedShape: PlacedShapeRecord) {
     cells: rotateShapeCells(shape.cells, placedShape.rotation),
   }, {
     color: getPlacedShapeColor(shape),
+    edgeColor: 0x0f172a,
+    edgeOpacity: 0.82,
+    showEdges: cellEdgesEnabled,
   })
   const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
 
@@ -1759,8 +1775,10 @@ const shapeSelector = createShapeSelector({
   selectedShapeId,
   initialPosition: previewOrigin,
   initialShapeColorMode: shapeColorMode,
+  initialCellEdgesEnabled: cellEdgesEnabled,
   onModeChange: setAppMode,
   onToggleShapeColorMode: toggleShapeColorMode,
+  onToggleCellEdges: toggleCellEdges,
   onSelect: selectShape,
   onClearSelection: clearSelection,
   onSelectPlacedShape: selectPlacedShape,
