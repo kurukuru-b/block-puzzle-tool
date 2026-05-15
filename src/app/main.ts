@@ -11,11 +11,14 @@ import { DEFAULT_GRID_BOUNDS } from "../core/grid/GridBounds"
 import {
   type AppMode,
   createShapeSelector,
-  type PuzzleDifficulty,
   type PlacedShapeSummary,
   type TimerMode,
   type ViewerPanelState,
 } from "../ui/createShapeSelector"
+import {
+  formatDifficulty,
+  type PuzzleDifficulty,
+} from "../core/puzzle/PuzzleDifficulty"
 import {
   rotateShapeCells,
   type RotationAxis,
@@ -455,10 +458,6 @@ async function registerPuzzle(difficulty: PuzzleDifficulty): Promise<{ ok: boole
       message: error instanceof Error ? error.message : "登録に失敗しました。",
     }
   }
-}
-
-function formatDifficulty(difficulty: PuzzleDifficulty): string {
-  return difficulty[0].toUpperCase() + difficulty.slice(1)
 }
 
 function previewSelectedShapeAt(hits: GridPointerHit[], event?: PointerEvent) {

@@ -1,5 +1,6 @@
 import { DEFAULT_GRID_BOUNDS } from "../../../src/core/grid/GridBounds"
 import { gridPosKey, type GridPos } from "../../../src/core/grid/GridPos"
+import type { PuzzleDifficulty } from "../../../src/core/puzzle/PuzzleDifficulty"
 import type { PuzzleExport } from "../../../src/core/puzzle/PuzzleExport"
 import type { PlacedShape } from "../../../src/core/puzzle/PlacedShape"
 import {
@@ -12,7 +13,6 @@ import { shapeDefinitions } from "../../../src/core/shape/shapeDefinitions"
 import { loadSupabaseEnv } from "./env"
 import {
   createSupabaseClient,
-  type PuzzleDifficulty,
   type SupabasePuzzleRow,
 } from "./supabaseRest"
 import { getPuzzleCellKeys, validatePuzzleExport } from "./puzzleValidation"
@@ -60,6 +60,30 @@ const titlePrefix = getTitlePrefix()
 const options = getGeneratorOptions()
 
 const specs: PuzzleSpec[] = [
+  {
+    difficulty: "beginner",
+    title: createTitle("Beginner", 1),
+    pieces: [2, 3],
+    minBase: 4,
+    minBaseFootprint: 4,
+    minFootprint: 4,
+    minLevels: 2,
+    maxLevels: 3,
+    attempts: 1800,
+    thresholds: createThresholds({ cohesion: 44, stability: 66, artistry: 25 }),
+  },
+  {
+    difficulty: "beginner",
+    title: createTitle("Beginner", 2),
+    pieces: [3],
+    minBase: 5,
+    minBaseFootprint: 4,
+    minFootprint: 5,
+    minLevels: 2,
+    maxLevels: 3,
+    attempts: 1800,
+    thresholds: createThresholds({ cohesion: 46, stability: 66, artistry: 28 }),
+  },
   {
     difficulty: "easy",
     title: createTitle("Easy", 1),
@@ -127,6 +151,28 @@ const specs: PuzzleSpec[] = [
     minLevels: 3,
     attempts: 4200,
     thresholds: createThresholds({ cohesion: 60, stability: 62, artistry: 46 }),
+  },
+  {
+    difficulty: "expert",
+    title: createTitle("Expert", 1),
+    pieces: [7, 8],
+    minBase: 9,
+    minBaseFootprint: 7,
+    minFootprint: 10,
+    minLevels: 4,
+    attempts: 4600,
+    thresholds: createThresholds({ cohesion: 61, stability: 61, artistry: 48 }),
+  },
+  {
+    difficulty: "expert",
+    title: createTitle("Expert", 2),
+    pieces: [8],
+    minBase: 10,
+    minBaseFootprint: 7,
+    minFootprint: 11,
+    minLevels: 4,
+    attempts: 4600,
+    thresholds: createThresholds({ cohesion: 62, stability: 61, artistry: 49 }),
   },
   {
     difficulty: "challenge",

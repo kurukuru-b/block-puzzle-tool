@@ -1,7 +1,6 @@
 import type { PuzzleExport } from "../../../src/core/puzzle/PuzzleExport"
+import type { PuzzleDifficulty } from "../../../src/core/puzzle/PuzzleDifficulty"
 import type { SupabaseEnv } from "./env"
-
-export type PuzzleDifficulty = "easy" | "normal" | "hard" | "challenge"
 
 export type SupabasePuzzleRow = {
   id: string

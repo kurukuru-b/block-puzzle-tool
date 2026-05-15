@@ -6,13 +6,16 @@ import {
   getShapeDisplayLabel,
   type ShapeColorMode,
 } from "../app/shapeAppearance"
+import {
+  formatDifficulty,
+  PUZZLE_DIFFICULTIES,
+  type PuzzleDifficulty,
+} from "../core/puzzle/PuzzleDifficulty"
 
 type GridAxis = "x" | "y" | "z"
 type MaybePromise<T> = T | Promise<T>
 
 export type AppMode = "editor" | "viewer"
-
-export type PuzzleDifficulty = "easy" | "normal" | "hard" | "challenge"
 
 export type PlacedShapeSummary = {
   id: string
@@ -390,7 +393,7 @@ export function createShapeSelector({
   viewerPanel.appendChild(difficultyControls)
   const difficultyButtons = new Map<PuzzleDifficulty, HTMLButtonElement>()
 
-  for (const difficulty of ["easy", "normal", "hard", "challenge"] satisfies PuzzleDifficulty[]) {
+  for (const difficulty of PUZZLE_DIFFICULTIES) {
     const button = document.createElement("button")
     button.type = "button"
     button.className = "secondary-action-button difficulty-button"
@@ -476,7 +479,7 @@ export function createShapeSelector({
   moveDifficultySelect.addEventListener("change", updateMoveProblemButtonState)
   problemManagement.appendChild(moveDifficultySelect)
 
-  for (const difficulty of ["easy", "normal", "hard", "challenge"] satisfies PuzzleDifficulty[]) {
+  for (const difficulty of PUZZLE_DIFFICULTIES) {
     const option = document.createElement("option")
     option.value = difficulty
     option.textContent = formatDifficulty(difficulty)
@@ -640,7 +643,7 @@ export function createShapeSelector({
   registerChoices.className = "register-choices"
   dataControls.appendChild(registerChoices)
 
-  for (const difficulty of ["easy", "normal", "hard", "challenge"] satisfies PuzzleDifficulty[]) {
+  for (const difficulty of PUZZLE_DIFFICULTIES) {
     const button = document.createElement("button")
     button.type = "button"
     button.className = "secondary-action-button register-choice-button"
@@ -907,10 +910,6 @@ export function createShapeSelector({
       state.selectedPuzzleId ?? "",
       ...state.puzzles.map((puzzle) => `${puzzle.id}:${puzzle.title}`),
     ].join("|")
-  }
-
-  function formatDifficulty(difficulty: PuzzleDifficulty): string {
-    return difficulty[0].toUpperCase() + difficulty.slice(1)
   }
 
   function setSelectedPlacedShape(id: string | null) {

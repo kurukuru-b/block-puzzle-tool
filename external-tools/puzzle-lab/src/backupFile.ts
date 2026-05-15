@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
+import { isPuzzleDifficulty } from "../../../src/core/puzzle/PuzzleDifficulty"
 import type { SupabasePuzzleBackupRow } from "./supabaseRest"
 
 export const BACKUP_DIR = "external-tools/puzzle-lab/backups"
@@ -113,7 +114,7 @@ function parseBackupRow(value: unknown): SupabasePuzzleBackupRow {
 
   if (
     typeof value.id !== "string" ||
-    !isDifficulty(value.difficulty) ||
+    !isPuzzleDifficulty(value.difficulty) ||
     typeof value.title !== "string" ||
     !isRecord(value.grid) ||
     !Array.isArray(value.placed_shapes)
@@ -140,13 +141,6 @@ function isBackupFile(value: unknown): value is BackupFile {
 
 function formatTimestampForFile(value: string): string {
   return value.replace(/[:.]/g, "-")
-}
-
-function isDifficulty(value: unknown): boolean {
-  return value === "easy" ||
-    value === "normal" ||
-    value === "hard" ||
-    value === "challenge"
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

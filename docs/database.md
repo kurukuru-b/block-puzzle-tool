@@ -34,3 +34,23 @@ VITE_SUPABASE_PUZZLE_TABLE=puzzles
 After saving the variables, push to `main` again or rerun the Pages workflow.
 
 The current SQL allows public read/write access through the browser key. That is fine for a private prototype, but a public production tool should move writes behind Supabase Auth or an Edge Function.
+
+## Beta Difficulty Migration
+
+The beta app uses six difficulty ids:
+
+```text
+beginner, easy, normal, hard, expert, challenge
+```
+
+If the table was created during alpha, update the difficulty check constraint
+before registering `beginner` or `expert` puzzles:
+
+```sql
+alter table public.puzzles
+drop constraint if exists puzzles_difficulty_check;
+
+alter table public.puzzles
+add constraint puzzles_difficulty_check
+check (difficulty in ('beginner', 'easy', 'normal', 'hard', 'expert', 'challenge'));
+```

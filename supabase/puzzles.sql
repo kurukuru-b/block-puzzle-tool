@@ -1,6 +1,6 @@
 create table if not exists public.puzzles (
   id text primary key,
-  difficulty text not null check (difficulty in ('easy', 'normal', 'hard', 'challenge')),
+  difficulty text not null check (difficulty in ('beginner', 'easy', 'normal', 'hard', 'expert', 'challenge')),
   title text not null,
   grid jsonb not null,
   placed_shapes jsonb not null,

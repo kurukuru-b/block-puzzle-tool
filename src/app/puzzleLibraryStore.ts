@@ -1,5 +1,9 @@
 import type { PuzzleExport } from "../core/puzzle/PuzzleExport"
-import type { PuzzleDifficulty } from "../ui/createShapeSelector"
+import {
+  isPuzzleDifficulty,
+  PUZZLE_DIFFICULTIES,
+  type PuzzleDifficulty,
+} from "../core/puzzle/PuzzleDifficulty"
 
 const PUZZLE_LIBRARY_STORAGE_KEY = "block-puzzle-tool:puzzle-library"
 const SUPABASE_TABLE = import.meta.env.VITE_SUPABASE_PUZZLE_TABLE ?? "puzzles"
@@ -66,10 +70,13 @@ export function createPuzzleLibraryStore() {
       const parsed = JSON.parse(raw) as StoredPuzzleLibrary
 
       return {
-        easy: normalizeStoredPuzzles(parsed.easy),
-        normal: normalizeStoredPuzzles(parsed.normal),
-        hard: normalizeStoredPuzzles(parsed.hard),
-        challenge: normalizeStoredPuzzles(parsed.challenge),
+        ...emptyLibrary,
+        ...Object.fromEntries(
+          PUZZLE_DIFFICULTIES.map((difficulty) => [
+            difficulty,
+            normalizeStoredPuzzles(parsed[difficulty]),
+          ]),
+        ),
       }
     } catch {
       return emptyLibrary
@@ -261,12 +268,13 @@ export function createPuzzleLibraryStore() {
 }
 
 export function createEmptyPuzzleLibrary(): PuzzleLibrary {
-  return {
-    easy: [],
-    normal: [],
-    hard: [],
-    challenge: [],
+  const library = {} as PuzzleLibrary
+
+  for (const difficulty of PUZZLE_DIFFICULTIES) {
+    library[difficulty] = []
   }
+
+  return library
 }
 
 function normalizeStoredPuzzles(value: StoredPuzzle[] | undefined): StoredPuzzle[] {
@@ -282,13 +290,6 @@ function toSupabaseBody(puzzle: StoredPuzzle): SupabasePuzzleBody {
     placed_shapes: puzzle.placedShapes,
     updated_at: new Date().toISOString(),
   }
-}
-
-function isPuzzleDifficulty(value: string): value is PuzzleDifficulty {
-  return value === "easy" ||
-    value === "normal" ||
-    value === "hard" ||
-    value === "challenge"
 }
 
 function getEnvString(key: "VITE_SUPABASE_URL" | "VITE_SUPABASE_ANON_KEY"): string | null {
