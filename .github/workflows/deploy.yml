@@ -2,7 +2,7 @@ name: Deploy Vite site to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
 
 permissions:
   contents: read
@@ -21,7 +21,8 @@ jobs:
     steps:
       - name: Checkout alpha
         uses: actions/checkout@v4
-
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 24
