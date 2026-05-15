@@ -1677,7 +1677,11 @@ function createEditorKeyboardController() {
       return
     }
 
-    if (event.key === "Delete" || event.key === "Backspace") {
+    if (
+      event.key === "Delete" ||
+      event.key === "Backspace" ||
+      event.code === "KeyQ"
+    ) {
       event.preventDefault()
       deleteSelectedPlacedShape()
       return
