@@ -113,6 +113,57 @@ button {
   pointer-events: none;
 }
 
+.selected-shape-actions {
+  position: fixed;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(75, 85, 99, 0.24);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.94);
+  box-shadow: 0 12px 28px rgba(42, 52, 68, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+  transition: opacity 120ms ease;
+}
+
+.selected-shape-actions[hidden] {
+  display: none;
+}
+
+.selected-shape-actions.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.selected-shape-actions button {
+  min-width: 58px;
+  height: 30px;
+  border: 1px solid rgba(105, 114, 130, 0.28);
+  border-radius: 6px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.selected-shape-actions button:hover {
+  border-color: rgba(37, 99, 235, 0.38);
+  background: #eff6ff;
+}
+
+.selected-shape-actions .danger-action-button {
+  color: #b91c1c;
+  border-color: rgba(185, 28, 28, 0.24);
+}
+
+.selected-shape-actions .danger-action-button:hover {
+  background: #fef2f2;
+}
+
 .ui-toggle-button {
   position: absolute;
   top: 24px;

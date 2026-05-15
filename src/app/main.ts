@@ -66,6 +66,10 @@ if (!app) {
   throw new Error("App root not found")
 }
 
+const selectedShapeActions = createSelectedShapeActions()
+
+app.appendChild(selectedShapeActions.element)
+
 type PlacedShapeRecord = PlacedShape & {
   id: string
   group: THREE.Group
@@ -107,6 +111,89 @@ const redoStack: PlacedShapeSnapshot[] = []
 const placedShapeRaycaster = new THREE.Raycaster()
 const placedShapePointer = new THREE.Vector2()
 let isApplyingHistory = false
+const selectedShapeActionBox = new THREE.Box3()
+const selectedShapeActionPos = new THREE.Vector3()
+
+function createSelectedShapeActions() {
+  const element = document.createElement("div")
+  element.className = "selected-shape-actions"
+  element.hidden = true
+
+  const editButton = document.createElement("button")
+  editButton.type = "button"
+  editButton.textContent = "Edit"
+  editButton.addEventListener("click", (event) => {
+    event.stopPropagation()
+    editSelectedPlacedShape()
+  })
+  element.appendChild(editButton)
+
+  const deleteButton = document.createElement("button")
+  deleteButton.type = "button"
+  deleteButton.className = "danger-action-button"
+  deleteButton.textContent = "Delete"
+  deleteButton.addEventListener("click", (event) => {
+    event.stopPropagation()
+    deleteSelectedPlacedShape()
+  })
+  element.appendChild(deleteButton)
+
+  element.addEventListener("pointerdown", (event) => event.stopPropagation())
+  element.addEventListener("pointerup", (event) => event.stopPropagation())
+
+  requestAnimationFrame(updateSelectedShapeActions)
+
+  return {
+    element,
+  }
+
+  function updateSelectedShapeActions() {
+    positionSelectedShapeActions(element)
+    requestAnimationFrame(updateSelectedShapeActions)
+  }
+}
+
+function positionSelectedShapeActions(element: HTMLElement) {
+  const selectedPlacedShape = getSelectedPlacedShape()
+
+  if (appMode !== "editor" || !selectedPlacedShape) {
+    element.hidden = true
+    element.classList.remove("is-visible")
+    return
+  }
+
+  selectedShapeActionBox.setFromObject(selectedPlacedShape.group)
+
+  if (selectedShapeActionBox.isEmpty()) {
+    element.hidden = true
+    element.classList.remove("is-visible")
+    return
+  }
+
+  selectedShapeActionBox.getCenter(selectedShapeActionPos)
+  selectedShapeActionPos.y = selectedShapeActionBox.max.y + 0.34
+  selectedShapeActionPos.project(mainScene.camera)
+
+  if (
+    selectedShapeActionPos.z < -1 ||
+    selectedShapeActionPos.z > 1 ||
+    Math.abs(selectedShapeActionPos.x) > 1.25 ||
+    Math.abs(selectedShapeActionPos.y) > 1.25
+  ) {
+    element.hidden = true
+    element.classList.remove("is-visible")
+    return
+  }
+
+  const rect = mainScene.renderer.domElement.getBoundingClientRect()
+  const x = rect.left + (selectedShapeActionPos.x * 0.5 + 0.5) * rect.width
+  const y = rect.top + (-selectedShapeActionPos.y * 0.5 + 0.5) * rect.height
+
+  element.style.left = `${x}px`
+  element.style.top = `${y}px`
+  element.hidden = false
+  element.classList.add("is-visible")
+}
 
 function renderSelectedShape() {
   if (activeShapeGroup) {
