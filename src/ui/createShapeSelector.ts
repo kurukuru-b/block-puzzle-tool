@@ -388,6 +388,14 @@ export function createShapeSelector({
   viewerTitle.textContent = "Viewer"
   viewerPanel.appendChild(viewerTitle)
 
+  const clearViewerProblemButton = document.createElement("button")
+  clearViewerProblemButton.type = "button"
+  clearViewerProblemButton.className = "secondary-action-button clear-viewer-problem-button"
+  clearViewerProblemButton.textContent = "None"
+  clearViewerProblemButton.setAttribute("aria-label", "Clear selected viewer problem")
+  clearViewerProblemButton.addEventListener("click", onClearViewerProblem)
+  viewerPanel.appendChild(clearViewerProblemButton)
+
   const difficultyControls = document.createElement("div")
   difficultyControls.className = "difficulty-controls"
   viewerPanel.appendChild(difficultyControls)
@@ -434,14 +442,6 @@ export function createShapeSelector({
   randomProblemButton.setAttribute("aria-label", "Random problem")
   randomProblemButton.addEventListener("click", onRandomProblem)
   problemControls.appendChild(randomProblemButton)
-
-  const clearViewerProblemButton = document.createElement("button")
-  clearViewerProblemButton.type = "button"
-  clearViewerProblemButton.className = "secondary-action-button clear-viewer-problem-button"
-  clearViewerProblemButton.textContent = "None"
-  clearViewerProblemButton.setAttribute("aria-label", "Clear selected viewer problem")
-  clearViewerProblemButton.addEventListener("click", onClearViewerProblem)
-  problemControls.appendChild(clearViewerProblemButton)
 
   const problemLookup = document.createElement("div")
   problemLookup.className = "problem-lookup"

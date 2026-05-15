@@ -296,7 +296,7 @@ button {
 }
 
 .difficulty-controls {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .problem-controls,
@@ -323,6 +323,11 @@ button {
 }
 
 .clear-viewer-problem-button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.problem-controls .clear-viewer-problem-button {
   grid-column: 1 / -1;
   width: 100%;
 }
