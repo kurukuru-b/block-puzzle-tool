@@ -2,7 +2,7 @@ name: Deploy Vite site to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
 
 permissions:
   contents: read
@@ -19,7 +19,10 @@ jobs:
       name: github-pages
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout alpha
+        uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -32,12 +35,37 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-      - run: npm run build
+      - name: Build alpha
+        run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_SUPABASE_PUZZLE_TABLE: ${{ vars.VITE_SUPABASE_PUZZLE_TABLE || 'puzzles' }}
           VITE_APP_PASSWORD: ${{ vars.VITE_APP_PASSWORD }}
+
+      - name: Checkout beta
+        uses: actions/checkout@v4
+        with:
+          ref: beta
+          path: beta-src
+
+      - name: Install beta dependencies
+        working-directory: beta-src
+        run: npm ci
+
+      - name: Typecheck beta
+        working-directory: beta-src
+        run: npm run typecheck
+
+      - name: Build beta
+        working-directory: beta-src
+        run: npx vite build --base=/block-puzzle-tool/beta/ --outDir ../dist/beta
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_PUZZLE_TABLE: ${{ vars.VITE_SUPABASE_PUZZLE_TABLE || 'puzzles' }}
+          VITE_APP_PASSWORD: ${{ vars.VITE_APP_PASSWORD }}
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
