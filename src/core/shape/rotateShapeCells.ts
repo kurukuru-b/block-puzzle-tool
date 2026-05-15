@@ -27,20 +27,102 @@ export function rotateShapeCells(
   return sortCells(rotatedCells)
 }
 
+export function rotateShapeCellsWithCore(
+  cells: LocalCellPos[],
+  rotation: ShapeRotation,
+): { cells: LocalCellPos[], coreCell: LocalCellPos } {
+  let rotatedCells = cells.map((cell) => ({ ...cell }))
+  let coreCell = { x: 0, y: 0, z: 0 }
+
+  for (const axis of ["x", "y", "z"] satisfies RotationAxis[]) {
+    const turnCount = normalizeTurnCount(rotation[axis])
+
+    for (let index = 0; index < turnCount; index += 1) {
+      const nextCells = rotatedCells.map((cell) => rotateCell(cell, axis))
+      const nextCoreCell = rotateCell(coreCell, axis)
+      const offset = getNormalizeOffset(nextCells)
+
+      rotatedCells = applyNormalizeOffset(nextCells, offset)
+      coreCell = {
+        x: nextCoreCell.x - offset.x,
+        y: nextCoreCell.y - offset.y,
+        z: nextCoreCell.z - offset.z,
+      }
+    }
+  }
+
+  return {
+    cells: sortCells(rotatedCells),
+    coreCell,
+  }
+}
+
+export function rotateShapeAbsolute(
+  cells: LocalCellPos[],
+  rotation: ShapeRotation,
+  axis: RotationAxis,
+): ShapeRotation {
+  const currentShape = rotateShapeCellsWithCore(cells, rotation)
+  const nextCells = currentShape.cells.map((cell) => rotateCell(cell, axis))
+  const nextCoreCell = rotateCell(currentShape.coreCell, axis)
+  const offset = getNormalizeOffset(nextCells)
+  const targetCells = applyNormalizeOffset(nextCells, offset)
+  const targetCoreCell = {
+    x: nextCoreCell.x - offset.x,
+    y: nextCoreCell.y - offset.y,
+    z: nextCoreCell.z - offset.z,
+  }
+  const targetKey = createCellSetKey(targetCells)
+
+  for (let x = 0; x < 4; x += 1) {
+    for (let y = 0; y < 4; y += 1) {
+      for (let z = 0; z < 4; z += 1) {
+        const candidate = { x, y, z }
+        const candidateShape = rotateShapeCellsWithCore(cells, candidate)
+
+        if (
+          createCellSetKey(candidateShape.cells) === targetKey
+          && candidateShape.coreCell.x === targetCoreCell.x
+          && candidateShape.coreCell.y === targetCoreCell.y
+          && candidateShape.coreCell.z === targetCoreCell.z
+        ) {
+          return candidate
+        }
+      }
+    }
+  }
+
+  return {
+    ...rotation,
+    [axis]: rotation[axis] + 1,
+  }
+}
+
 export function normalizeCells(cells: LocalCellPos[]): LocalCellPos[] {
   if (cells.length === 0) {
     return []
   }
 
-  const minX = Math.min(...cells.map((cell) => cell.x))
-  const minY = Math.min(...cells.map((cell) => cell.y))
-  const minZ = Math.min(...cells.map((cell) => cell.z))
+  return applyNormalizeOffset(cells, getNormalizeOffset(cells))
+}
 
+function applyNormalizeOffset(
+  cells: LocalCellPos[],
+  offset: LocalCellPos,
+): LocalCellPos[] {
   return cells.map((cell) => ({
-    x: cell.x - minX,
-    y: cell.y - minY,
-    z: cell.z - minZ,
+    x: cell.x - offset.x,
+    y: cell.y - offset.y,
+    z: cell.z - offset.z,
   }))
+}
+
+function getNormalizeOffset(cells: LocalCellPos[]): LocalCellPos {
+  return {
+    x: Math.min(...cells.map((cell) => cell.x)),
+    y: Math.min(...cells.map((cell) => cell.y)),
+    z: Math.min(...cells.map((cell) => cell.z)),
+  }
 }
 
 function rotateCell(cell: LocalCellPos, axis: RotationAxis): LocalCellPos {
@@ -82,4 +164,10 @@ function sortCells(cells: LocalCellPos[]): LocalCellPos[] {
 
     return a.x - b.x
   })
+}
+
+function createCellSetKey(cells: LocalCellPos[]): string {
+  return sortCells(cells)
+    .map((cell) => `${cell.x},${cell.y},${cell.z}`)
+    .join("|")
 }

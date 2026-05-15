@@ -20,7 +20,9 @@ import {
   type PuzzleDifficulty,
 } from "../core/puzzle/PuzzleDifficulty"
 import {
+  rotateShapeAbsolute,
   rotateShapeCells,
+  rotateShapeCellsWithCore,
   type RotationAxis,
   type ShapeRotation,
 } from "../core/shape/rotateShapeCells"
@@ -86,6 +88,7 @@ let viewerProblemSelected = false
 let viewerColorEnabled = false
 let shapeColorMode: ShapeColorMode = "new"
 let cellEdgesEnabled = true
+let coreMarkerEnabled = true
 let timerMode: TimerMode = "down"
 let timerRunning = false
 let timerElapsedSeconds = 0
@@ -217,7 +220,8 @@ function renderSelectedShape() {
     return
   }
 
-  const rotatedCells = rotateShapeCells(shape.cells, selectedRotation)
+  const rotatedShape = rotateShapeCellsWithCore(shape.cells, selectedRotation)
+  const rotatedCells = rotatedShape.cells
   const isValidPlacement = isShapeInsideGrid(
     previewOrigin,
     rotatedCells,
@@ -237,6 +241,8 @@ function renderSelectedShape() {
     edgeColor: 0xff2bd6,
     edgeOpacity: 0.98,
     showEdges: cellEdgesEnabled,
+    showCoreMarker: coreMarkerEnabled,
+    coreCell: rotatedShape.coreCell,
   })
   activeShapeGroup.add(createPreviewRotationGuide(rotatedCells))
 
@@ -485,10 +491,13 @@ function rotateSelectedShape(axis: RotationAxis) {
     return
   }
 
-  selectedRotation = {
-    ...selectedRotation,
-    [axis]: selectedRotation[axis] + 1,
+  const shape = shapeDefinitions.find((definition) => definition.id === selectedShapeId)
+
+  if (!shape) {
+    throw new Error(`Shape not found: ${selectedShapeId}`)
   }
+
+  selectedRotation = rotateShapeAbsolute(shape.cells, selectedRotation, axis)
 
   renderSelectedShape()
 }
@@ -827,7 +836,8 @@ function addPlacedShape(placedShape: PlacedShape) {
     throw new Error(`Shape not found: ${placedShape.shapeId}`)
   }
 
-  const rotatedCells = rotateShapeCells(shape.cells, placedShape.rotation)
+  const rotatedShape = rotateShapeCellsWithCore(shape.cells, placedShape.rotation)
+  const rotatedCells = rotatedShape.cells
   const placedShapeId = `${placedShape.shapeId}-${nextPlacedShapeId}`
   nextPlacedShapeId += 1
 
@@ -839,6 +849,8 @@ function addPlacedShape(placedShape: PlacedShape) {
     edgeColor: 0xff2bd6,
     edgeOpacity: 0.95,
     showEdges: cellEdgesEnabled,
+    showCoreMarker: coreMarkerEnabled,
+    coreCell: rotatedShape.coreCell,
   })
   const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
 
@@ -1186,6 +1198,12 @@ function toggleCellEdges() {
   renderSelectedShape()
 }
 
+function toggleCoreMarker() {
+  coreMarkerEnabled = !coreMarkerEnabled
+  rebuildAllPlacedShapeGroups()
+  renderSelectedShape()
+}
+
 function startStopTimer() {
   if (timerRunning) {
     stopTimer()
@@ -1455,11 +1473,14 @@ function rotateSelectedPlacedShape(axis: RotationAxis) {
     return
   }
 
+  const shape = shapeDefinitions.find((definition) => definition.id === selectedPlacedShape.shapeId)
+
+  if (!shape) {
+    throw new Error(`Shape not found: ${selectedPlacedShape.shapeId}`)
+  }
+
   updateSelectedPlacedShapeTransform({
-    rotation: {
-      ...selectedPlacedShape.rotation,
-      [axis]: selectedPlacedShape.rotation[axis] + 1,
-    },
+    rotation: rotateShapeAbsolute(shape.cells, selectedPlacedShape.rotation, axis),
   })
 }
 
@@ -1548,14 +1569,17 @@ function rebuildPlacedShapeGroup(placedShape: PlacedShapeRecord) {
   mainScene.scene.remove(placedShape.group)
   disposeObject3D(placedShape.group)
 
+  const rotatedShape = rotateShapeCellsWithCore(shape.cells, placedShape.rotation)
   const placedGroup = createShapeMeshGroup({
     ...shape,
-    cells: rotateShapeCells(shape.cells, placedShape.rotation),
+    cells: rotatedShape.cells,
   }, {
     color: getPlacedShapeColor(shape),
     edgeColor: 0xff2bd6,
     edgeOpacity: 0.95,
     showEdges: cellEdgesEnabled,
+    showCoreMarker: coreMarkerEnabled,
+    coreCell: rotatedShape.coreCell,
   })
   const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
 
@@ -1776,9 +1800,11 @@ const shapeSelector = createShapeSelector({
   initialPosition: previewOrigin,
   initialShapeColorMode: shapeColorMode,
   initialCellEdgesEnabled: cellEdgesEnabled,
+  initialCoreMarkerEnabled: coreMarkerEnabled,
   onModeChange: setAppMode,
   onToggleShapeColorMode: toggleShapeColorMode,
   onToggleCellEdges: toggleCellEdges,
+  onToggleCoreMarker: toggleCoreMarker,
   onSelect: selectShape,
   onClearSelection: clearSelection,
   onSelectPlacedShape: selectPlacedShape,

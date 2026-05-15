@@ -56,9 +56,11 @@ type CreateShapeSelectorParams = {
   initialPosition: GridPos
   initialShapeColorMode: ShapeColorMode
   initialCellEdgesEnabled: boolean
+  initialCoreMarkerEnabled: boolean
   onModeChange: (mode: AppMode) => void
   onToggleShapeColorMode: () => void
   onToggleCellEdges: () => void
+  onToggleCoreMarker: () => void
   onSelect: (shapeId: string) => void
   onClearSelection: () => void
   onSelectPlacedShape: (placedShapeId: string) => void
@@ -108,9 +110,11 @@ export function createShapeSelector({
   initialPosition,
   initialShapeColorMode,
   initialCellEdgesEnabled,
+  initialCoreMarkerEnabled,
   onModeChange,
   onToggleShapeColorMode,
   onToggleCellEdges,
+  onToggleCoreMarker,
   onSelect,
   onClearSelection,
   onSelectPlacedShape,
@@ -195,6 +199,7 @@ export function createShapeSelector({
   let problemListSignature = ""
   let shapeColorMode = initialShapeColorMode
   let cellEdgesEnabled = initialCellEdgesEnabled
+  let coreMarkerEnabled = initialCoreMarkerEnabled
 
   const title = document.createElement("h1")
   title.textContent = "Block Puzzle Tool"
@@ -225,6 +230,16 @@ export function createShapeSelector({
     onToggleCellEdges()
   })
   editorToolRow.appendChild(cellEdgesButton)
+
+  const coreMarkerButton = document.createElement("button")
+  coreMarkerButton.type = "button"
+  coreMarkerButton.className = "secondary-action-button core-marker-button"
+  coreMarkerButton.addEventListener("click", () => {
+    coreMarkerEnabled = !coreMarkerEnabled
+    updateCoreMarkerButton()
+    onToggleCoreMarker()
+  })
+  editorToolRow.appendChild(coreMarkerButton)
 
   const clearSelectionButton = document.createElement("button")
   clearSelectionButton.type = "button"
@@ -278,6 +293,7 @@ export function createShapeSelector({
 
   updateShapeColorModeButton()
   updateCellEdgesButton()
+  updateCoreMarkerButton()
 
   const rotationControls = document.createElement("div")
   rotationControls.className = "rotation-controls"
@@ -1127,6 +1143,18 @@ export function createShapeSelector({
     )
     cellEdgesButton.classList.toggle("is-selected", cellEdgesEnabled)
     cellEdgesButton.setAttribute("aria-pressed", String(cellEdgesEnabled))
+  }
+
+  function updateCoreMarkerButton() {
+    coreMarkerButton.textContent = coreMarkerEnabled
+      ? "Core On"
+      : "Core Off"
+    coreMarkerButton.setAttribute(
+      "aria-label",
+      coreMarkerEnabled ? "Hide core marker" : "Show core marker",
+    )
+    coreMarkerButton.classList.toggle("is-selected", coreMarkerEnabled)
+    coreMarkerButton.setAttribute("aria-pressed", String(coreMarkerEnabled))
   }
 
   function updateShapeButtonAppearances() {
