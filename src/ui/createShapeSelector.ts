@@ -673,9 +673,20 @@ export function createShapeSelector({
     modeButtons.set(mode, button)
   }
 
+  const dataToolsToggleButton = document.createElement("button")
+  dataToolsToggleButton.type = "button"
+  dataToolsToggleButton.className = "secondary-action-button data-tools-toggle-button"
+  dataToolsToggleButton.textContent = "Hide Tools"
+  dataToolsToggleButton.setAttribute("aria-pressed", "false")
+  dataControls.appendChild(dataToolsToggleButton)
+
+  const dataTools = document.createElement("div")
+  dataTools.className = "data-tools"
+  dataControls.appendChild(dataTools)
+
   const dataActions = document.createElement("div")
   dataActions.className = "data-actions"
-  dataControls.appendChild(dataActions)
+  dataTools.appendChild(dataActions)
 
   const importButton = document.createElement("button")
   importButton.type = "button"
@@ -703,7 +714,7 @@ export function createShapeSelector({
 
   const registerChoices = document.createElement("div")
   registerChoices.className = "register-choices"
-  dataControls.appendChild(registerChoices)
+  dataTools.appendChild(registerChoices)
 
   const registerTitleInput = document.createElement("input")
   registerTitleInput.type = "text"
@@ -735,11 +746,18 @@ export function createShapeSelector({
   dataText.className = "export-output"
   dataText.spellcheck = false
   dataText.placeholder = "Exported puzzle JSON"
-  dataControls.appendChild(dataText)
+  dataTools.appendChild(dataText)
 
   const importStatus = document.createElement("span")
   importStatus.className = "import-status"
-  dataControls.appendChild(importStatus)
+  dataTools.appendChild(importStatus)
+
+  dataToolsToggleButton.addEventListener("click", () => {
+    const isHidden = dataTools.classList.toggle("is-hidden")
+
+    dataToolsToggleButton.textContent = isHidden ? "Show Tools" : "Hide Tools"
+    dataToolsToggleButton.setAttribute("aria-pressed", String(isHidden))
+  })
 
   exportButton.addEventListener("click", () => {
     try {
