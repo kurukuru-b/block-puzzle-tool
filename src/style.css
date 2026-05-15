@@ -224,6 +224,40 @@ button {
   background: rgba(239, 246, 255, 0.9);
 }
 
+.viewer-problem-overlay {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  z-index: 2;
+  display: none;
+  max-width: min(440px, calc(100vw - 36px));
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(105, 114, 130, 0.26);
+  border-radius: 8px;
+  color: #111827;
+  background: rgba(248, 250, 252, 0.84);
+  box-shadow: 0 14px 32px rgba(42, 52, 68, 0.16);
+  pointer-events: none;
+}
+
+.viewer-problem-overlay.is-visible {
+  display: grid;
+}
+
+.viewer-problem-overlay-index {
+  color: #2563eb;
+  font: 850 12px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.viewer-problem-overlay-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 850;
+}
+
 .editor-panels.is-ui-hidden .shape-selector,
 .editor-panels.is-ui-hidden .data-panel {
   display: none;

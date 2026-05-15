@@ -171,6 +171,18 @@ export function createShapeSelector({
 
   root.appendChild(timerOverlay)
 
+  const viewerProblemOverlay = document.createElement("div")
+  viewerProblemOverlay.className = "viewer-problem-overlay"
+  root.appendChild(viewerProblemOverlay)
+
+  const viewerProblemOverlayIndex = document.createElement("span")
+  viewerProblemOverlayIndex.className = "viewer-problem-overlay-index"
+  viewerProblemOverlay.appendChild(viewerProblemOverlayIndex)
+
+  const viewerProblemOverlayTitle = document.createElement("span")
+  viewerProblemOverlayTitle.className = "viewer-problem-overlay-title"
+  viewerProblemOverlay.appendChild(viewerProblemOverlayTitle)
+
   const editorPanel = document.createElement("section")
   editorPanel.className = "shape-selector editor-panel"
   root.appendChild(editorPanel)
@@ -890,6 +902,7 @@ export function createShapeSelector({
 
   function setViewerState(state: ViewerPanelState) {
     latestViewerState = state
+    const hasSelectedProblem = state.selectedPuzzleId !== null
 
     for (const [difficulty, button] of difficultyButtons) {
       const isSelected = difficulty === state.difficulty
@@ -901,6 +914,13 @@ export function createShapeSelector({
       ? "No problems"
       : `${state.problemIndex + 1} / ${state.problemCount}`
     problemTitle.textContent = state.problemTitle
+    viewerProblemOverlay.classList.toggle("is-visible", hasSelectedProblem)
+    viewerProblemOverlayIndex.textContent = hasSelectedProblem
+      ? `${state.problemIndex + 1} / ${state.problemCount}`
+      : ""
+    viewerProblemOverlayTitle.textContent = hasSelectedProblem
+      ? state.problemTitle
+      : ""
     previousProblemButton.disabled = state.problemCount <= 1
     nextProblemButton.disabled = state.problemCount <= 1
     randomProblemButton.disabled = state.problemCount === 0
