@@ -33,7 +33,7 @@ export function createShapeMeshGroup(
   const edgeMaterial = options.showEdges === false
     ? null
     : new THREE.LineBasicMaterial({
-      color: options.edgeColor ?? 0x00d9ff,
+      color: options.edgeColor ?? 0xff2bd6,
       opacity: options.edgeOpacity ?? 0.95,
       transparent: true,
       depthTest: false,

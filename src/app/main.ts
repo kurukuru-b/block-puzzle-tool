@@ -234,7 +234,7 @@ function renderSelectedShape() {
   }, {
     color: isValidPlacement ? getShapeDisplayColor(shape, shapeColorMode) : 0xff3344,
     opacity: 0.58,
-    edgeColor: 0x00d9ff,
+    edgeColor: 0xff2bd6,
     edgeOpacity: 0.98,
     showEdges: cellEdgesEnabled,
   })
@@ -836,7 +836,7 @@ function addPlacedShape(placedShape: PlacedShape) {
     cells: rotatedCells,
   }, {
     color: getPlacedShapeColor(shape),
-    edgeColor: 0x00d9ff,
+    edgeColor: 0xff2bd6,
     edgeOpacity: 0.95,
     showEdges: cellEdgesEnabled,
   })
@@ -1553,7 +1553,7 @@ function rebuildPlacedShapeGroup(placedShape: PlacedShapeRecord) {
     cells: rotateShapeCells(shape.cells, placedShape.rotation),
   }, {
     color: getPlacedShapeColor(shape),
-    edgeColor: 0x00d9ff,
+    edgeColor: 0xff2bd6,
     edgeOpacity: 0.95,
     showEdges: cellEdgesEnabled,
   })
