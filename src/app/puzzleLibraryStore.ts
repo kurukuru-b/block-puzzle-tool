@@ -12,6 +12,7 @@ export type StoredPuzzle = PuzzleExport & {
   id: string
   difficulty: PuzzleDifficulty
   title: string
+  orderIndex: number
 }
 
 export type PuzzleLibrary = Record<PuzzleDifficulty, StoredPuzzle[]>
@@ -26,6 +27,7 @@ type SupabasePuzzleRow = {
   id: string
   difficulty: string
   title: string
+  order_index?: number | null
   grid: PuzzleExport["grid"]
   placed_shapes: PuzzleExport["placedShapes"]
 }
@@ -34,9 +36,15 @@ type SupabasePuzzleBody = {
   id: string
   difficulty: PuzzleDifficulty
   title: string
+  order_index: number
   grid: PuzzleExport["grid"]
   placed_shapes: PuzzleExport["placedShapes"]
   updated_at?: string
+}
+
+type PuzzleOrderUpdate = {
+  id: string
+  orderIndex: number
 }
 
 export function createPuzzleLibraryStore() {
@@ -51,6 +59,7 @@ export function createPuzzleLibraryStore() {
     upsertPuzzle,
     renamePuzzle,
     movePuzzle,
+    updatePuzzleOrder,
     deletePuzzle,
   }
 
@@ -95,10 +104,17 @@ export function createPuzzleLibraryStore() {
       }
     }
 
-    const result = await request<SupabasePuzzleRow[]>(
-      `${getRestUrl()}?select=id,difficulty,title,grid,placed_shapes&order=created_at.asc`,
+    let result = await request<SupabasePuzzleRow[]>(
+      `${getRestUrl()}?select=id,difficulty,title,order_index,grid,placed_shapes&order=order_index.asc.nullslast&order=created_at.asc`,
       { method: "GET" },
     )
+
+    if (!result.ok && result.message.includes("order_index")) {
+      result = await request<SupabasePuzzleRow[]>(
+        `${getRestUrl()}?select=id,difficulty,title,grid,placed_shapes&order=created_at.asc`,
+        { method: "GET" },
+      )
+    }
 
     if (!result.ok) {
       return result
@@ -111,16 +127,22 @@ export function createPuzzleLibraryStore() {
         continue
       }
 
-      library[row.difficulty].push({
+      const puzzles = library[row.difficulty]
+
+      puzzles.push({
         id: row.id,
         difficulty: row.difficulty,
         title: row.title,
+        orderIndex: typeof row.order_index === "number" && Number.isInteger(row.order_index)
+          ? row.order_index
+          : puzzles.length,
         version: 1,
         grid: row.grid,
         placedShapes: row.placed_shapes,
       })
     }
 
+    normalizeLibraryOrder(library)
     saveCached(library)
 
     return {
@@ -170,6 +192,7 @@ export function createPuzzleLibraryStore() {
     id: string,
     difficulty: PuzzleDifficulty,
     title: string,
+    orderIndex: number,
   ): Promise<StoreResult> {
     if (!isRemoteConfigured()) {
       return {
@@ -186,9 +209,44 @@ export function createPuzzleLibraryStore() {
       body: JSON.stringify({
         difficulty,
         title,
+        order_index: orderIndex,
         updated_at: new Date().toISOString(),
       }),
     })
+  }
+
+  async function updatePuzzleOrder(
+    updates: PuzzleOrderUpdate[],
+  ): Promise<StoreResult> {
+    if (!isRemoteConfigured() || updates.length === 0) {
+      return {
+        ok: true,
+        message: "Reordered locally.",
+      }
+    }
+
+    const results = await Promise.all(updates.map((update) => (
+      request<void>(`${getRestUrl()}?id=eq.${encodeURIComponent(update.id)}`, {
+        method: "PATCH",
+        headers: {
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          order_index: update.orderIndex,
+          updated_at: new Date().toISOString(),
+        }),
+      })
+    )))
+    const failed = results.find((result) => !result.ok)
+
+    if (failed) {
+      return failed
+    }
+
+    return {
+      ok: true,
+      message: "Reordered in DB.",
+    }
   }
 
   async function deletePuzzle(id: string): Promise<StoreResult> {
@@ -278,7 +336,22 @@ export function createEmptyPuzzleLibrary(): PuzzleLibrary {
 }
 
 function normalizeStoredPuzzles(value: StoredPuzzle[] | undefined): StoredPuzzle[] {
-  return Array.isArray(value) ? value : []
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .map((puzzle, index) => ({
+      ...puzzle,
+      orderIndex: Number.isInteger(puzzle.orderIndex)
+        ? puzzle.orderIndex
+        : index,
+    }))
+    .sort((a, b) => a.orderIndex - b.orderIndex)
+    .map((puzzle, index) => ({
+      ...puzzle,
+      orderIndex: index,
+    }))
 }
 
 function toSupabaseBody(puzzle: StoredPuzzle): SupabasePuzzleBody {
@@ -286,9 +359,19 @@ function toSupabaseBody(puzzle: StoredPuzzle): SupabasePuzzleBody {
     id: puzzle.id,
     difficulty: puzzle.difficulty,
     title: puzzle.title,
+    order_index: puzzle.orderIndex,
     grid: puzzle.grid,
     placed_shapes: puzzle.placedShapes,
     updated_at: new Date().toISOString(),
+  }
+}
+
+function normalizeLibraryOrder(library: PuzzleLibrary) {
+  for (const difficulty of PUZZLE_DIFFICULTIES) {
+    library[difficulty].sort((a, b) => a.orderIndex - b.orderIndex)
+    library[difficulty].forEach((puzzle, index) => {
+      puzzle.orderIndex = index
+    })
   }
 }
 

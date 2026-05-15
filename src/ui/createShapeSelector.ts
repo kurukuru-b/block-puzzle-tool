@@ -71,6 +71,7 @@ type CreateShapeSelectorParams = {
   onClearViewerProblem: () => void
   onRenameProblem: (title: string) => MaybePromise<ImportPuzzleResult>
   onMoveProblemDifficulty: (difficulty: PuzzleDifficulty) => MaybePromise<ImportPuzzleResult>
+  onReorderProblem: (amount: number) => MaybePromise<ImportPuzzleResult>
   onDeleteProblem: () => MaybePromise<ImportPuzzleResult>
   onToggleColor: () => void
   onTimerStartStop: () => void
@@ -125,6 +126,7 @@ export function createShapeSelector({
   onClearViewerProblem,
   onRenameProblem,
   onMoveProblemDifficulty,
+  onReorderProblem,
   onDeleteProblem,
   onToggleColor,
   onTimerStartStop,
@@ -585,6 +587,30 @@ export function createShapeSelector({
   })
   problemManagement.appendChild(moveProblemButton)
 
+  const reorderUpButton = document.createElement("button")
+  reorderUpButton.type = "button"
+  reorderUpButton.className = "secondary-action-button"
+  reorderUpButton.textContent = "Up"
+  reorderUpButton.addEventListener("click", async () => {
+    const result = await onReorderProblem(-1)
+
+    problemStatus.textContent = result.message
+    problemStatus.classList.toggle("is-error", !result.ok)
+  })
+  problemManagement.appendChild(reorderUpButton)
+
+  const reorderDownButton = document.createElement("button")
+  reorderDownButton.type = "button"
+  reorderDownButton.className = "secondary-action-button"
+  reorderDownButton.textContent = "Down"
+  reorderDownButton.addEventListener("click", async () => {
+    const result = await onReorderProblem(1)
+
+    problemStatus.textContent = result.message
+    problemStatus.classList.toggle("is-error", !result.ok)
+  })
+  problemManagement.appendChild(reorderDownButton)
+
   const deleteProblemButton = document.createElement("button")
   deleteProblemButton.type = "button"
   deleteProblemButton.className = "secondary-action-button danger-action-button"
@@ -947,7 +973,7 @@ export function createShapeSelector({
     problemTitle.textContent = state.problemTitle
     viewerProblemOverlay.classList.toggle("is-visible", hasSelectedProblem)
     viewerProblemOverlayIndex.textContent = hasSelectedProblem
-      ? `${state.problemIndex + 1} / ${state.problemCount}`
+      ? `${formatDifficulty(state.difficulty)} ${state.problemIndex + 1} / ${state.problemCount}`
       : ""
     viewerProblemOverlayTitle.textContent = hasSelectedProblem
       ? state.problemTitle
@@ -964,6 +990,9 @@ export function createShapeSelector({
     problemTitleInput.disabled = state.selectedPuzzleId === null
     renameProblemButton.disabled = state.selectedPuzzleId === null
     deleteProblemButton.disabled = state.selectedPuzzleId === null
+    reorderUpButton.disabled = state.selectedPuzzleId === null || state.problemIndex <= 0
+    reorderDownButton.disabled = state.selectedPuzzleId === null ||
+      state.problemIndex >= state.problemCount - 1
 
     if (document.activeElement !== problemTitleInput) {
       problemTitleInput.value = state.selectedPuzzleId ? state.problemTitle : ""

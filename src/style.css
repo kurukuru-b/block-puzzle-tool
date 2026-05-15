@@ -433,7 +433,7 @@ button {
 }
 
 .problem-management {
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) repeat(4, auto);
   align-items: center;
 }
 

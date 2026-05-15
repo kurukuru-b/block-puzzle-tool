@@ -17,6 +17,7 @@ import {
 } from "../ui/createShapeSelector"
 import {
   formatDifficulty,
+  PUZZLE_DIFFICULTIES,
   type PuzzleDifficulty,
 } from "../core/puzzle/PuzzleDifficulty"
 import {
@@ -699,6 +700,7 @@ async function registerPuzzle(
       id: `${difficulty}-${Date.now()}`,
       difficulty,
       title,
+      orderIndex: library[difficulty].length,
     }
 
     library[difficulty].push(storedPuzzle)
@@ -1113,9 +1115,12 @@ async function moveSelectedViewerProblemDifficulty(
     ...puzzle,
     difficulty,
     title: nextTitle,
+    orderIndex: library[difficulty].length,
   }
 
   library[difficulty].push(movedPuzzle)
+  normalizePuzzleOrder(library[viewerDifficulty])
+  normalizePuzzleOrder(library[difficulty])
   viewerDifficulty = difficulty
   viewerProblemIndex = library[difficulty].length - 1
   savePuzzleLibrary(library)
@@ -1126,6 +1131,7 @@ async function moveSelectedViewerProblemDifficulty(
     movedPuzzle.id,
     difficulty,
     movedPuzzle.title,
+    movedPuzzle.orderIndex,
   )
 
   if (!dbResult.ok) {
@@ -1135,11 +1141,80 @@ async function moveSelectedViewerProblemDifficulty(
     }
   }
 
+  const orderResult = await puzzleLibraryStore.updatePuzzleOrder([
+    ...currentPuzzles,
+    ...library[difficulty],
+  ].map((orderedPuzzle) => ({
+    id: orderedPuzzle.id,
+    orderIndex: orderedPuzzle.orderIndex,
+  })))
+
+  if (!orderResult.ok) {
+    return {
+      ok: false,
+      message: `Moved locally. DB reorder failed: ${orderResult.message}`,
+    }
+  }
+
   return {
     ok: true,
     message: puzzleLibraryStore.isRemoteConfigured()
       ? `Moved to ${movedPuzzle.title} in DB`
       : `Moved to ${movedPuzzle.title} locally`,
+  }
+}
+
+async function reorderSelectedViewerProblem(
+  amount: number,
+): Promise<{ ok: boolean, message: string }> {
+  const library = loadPuzzleLibrary()
+  const puzzles = library[viewerDifficulty]
+  const puzzle = puzzles[viewerProblemIndex]
+
+  if (!viewerProblemSelected || !puzzle) {
+    return {
+      ok: false,
+      message: "並び替える問題がありません。",
+    }
+  }
+
+  const nextIndex = viewerProblemIndex + amount
+
+  if (nextIndex < 0 || nextIndex >= puzzles.length) {
+    return {
+      ok: false,
+      message: amount < 0 ? "すでに先頭です。" : "すでに最後です。",
+    }
+  }
+
+  const [movedPuzzle] = puzzles.splice(viewerProblemIndex, 1)
+
+  puzzles.splice(nextIndex, 0, movedPuzzle)
+  normalizePuzzleOrder(puzzles)
+  viewerProblemIndex = nextIndex
+  savePuzzleLibrary(library)
+  loadSelectedViewerPuzzle()
+  refreshViewerState()
+
+  const dbResult = await puzzleLibraryStore.updatePuzzleOrder(
+    puzzles.map((orderedPuzzle) => ({
+      id: orderedPuzzle.id,
+      orderIndex: orderedPuzzle.orderIndex,
+    })),
+  )
+
+  if (!dbResult.ok) {
+    return {
+      ok: false,
+      message: `Reordered locally. DB sync failed: ${dbResult.message}`,
+    }
+  }
+
+  return {
+    ok: true,
+    message: puzzleLibraryStore.isRemoteConfigured()
+      ? "Reordered in DB"
+      : "Reordered locally",
   }
 }
 
@@ -1156,6 +1231,7 @@ async function deleteSelectedViewerProblem(): Promise<{ ok: boolean, message: st
   }
 
   puzzles.splice(viewerProblemIndex, 1)
+  normalizePuzzleOrder(puzzles)
   viewerProblemIndex = puzzles.length === 0
     ? 0
     : clamp(viewerProblemIndex, 0, puzzles.length - 1)
@@ -1169,6 +1245,20 @@ async function deleteSelectedViewerProblem(): Promise<{ ok: boolean, message: st
     return {
       ok: false,
       message: `Deleted locally. DB sync failed: ${dbResult.message}`,
+    }
+  }
+
+  const orderResult = await puzzleLibraryStore.updatePuzzleOrder(
+    puzzles.map((orderedPuzzle) => ({
+      id: orderedPuzzle.id,
+      orderIndex: orderedPuzzle.orderIndex,
+    })),
+  )
+
+  if (!orderResult.ok) {
+    return {
+      ok: false,
+      message: `Deleted locally. DB reorder failed: ${orderResult.message}`,
     }
   }
 
@@ -1352,7 +1442,17 @@ function loadPuzzleLibrary(): PuzzleLibrary {
 }
 
 function savePuzzleLibrary(library: PuzzleLibrary) {
+  for (const difficulty of PUZZLE_DIFFICULTIES) {
+    normalizePuzzleOrder(library[difficulty])
+  }
+
   puzzleLibraryStore.saveCached(library)
+}
+
+function normalizePuzzleOrder(puzzles: StoredPuzzle[]) {
+  puzzles.forEach((puzzle, index) => {
+    puzzle.orderIndex = index
+  })
 }
 
 function rebuildOccupiedCells() {
@@ -1815,6 +1915,7 @@ const shapeSelector = createShapeSelector({
   onClearViewerProblem: clearViewerProblemSelection,
   onRenameProblem: renameSelectedViewerProblem,
   onMoveProblemDifficulty: moveSelectedViewerProblemDifficulty,
+  onReorderProblem: reorderSelectedViewerProblem,
   onDeleteProblem: deleteSelectedViewerProblem,
   onToggleColor: toggleViewerColor,
   onTimerStartStop: startStopTimer,
