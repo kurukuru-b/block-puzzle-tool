@@ -701,6 +701,7 @@ async function registerPuzzle(
       difficulty,
       title,
       orderIndex: library[difficulty].length,
+      isPublished: true,
     }
 
     library[difficulty].push(storedPuzzle)
@@ -1116,6 +1117,7 @@ async function moveSelectedViewerProblemDifficulty(
     difficulty,
     title: nextTitle,
     orderIndex: library[difficulty].length,
+    isPublished: puzzle.isPublished,
   }
 
   library[difficulty].push(movedPuzzle)

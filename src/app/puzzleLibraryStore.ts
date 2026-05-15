@@ -13,6 +13,7 @@ export type StoredPuzzle = PuzzleExport & {
   difficulty: PuzzleDifficulty
   title: string
   orderIndex: number
+  isPublished: boolean
 }
 
 export type PuzzleLibrary = Record<PuzzleDifficulty, StoredPuzzle[]>
@@ -28,6 +29,7 @@ type SupabasePuzzleRow = {
   difficulty: string
   title: string
   order_index?: number | null
+  is_published?: boolean | null
   grid: PuzzleExport["grid"]
   placed_shapes: PuzzleExport["placedShapes"]
 }
@@ -37,6 +39,7 @@ type SupabasePuzzleBody = {
   difficulty: PuzzleDifficulty
   title: string
   order_index: number
+  is_published: boolean
   grid: PuzzleExport["grid"]
   placed_shapes: PuzzleExport["placedShapes"]
   updated_at?: string
@@ -105,11 +108,14 @@ export function createPuzzleLibraryStore() {
     }
 
     let result = await request<SupabasePuzzleRow[]>(
-      `${getRestUrl()}?select=id,difficulty,title,order_index,grid,placed_shapes&order=order_index.asc.nullslast&order=created_at.asc`,
+      `${getRestUrl()}?select=id,difficulty,title,order_index,is_published,grid,placed_shapes&is_published=is.true&order=order_index.asc.nullslast&order=created_at.asc`,
       { method: "GET" },
     )
 
-    if (!result.ok && result.message.includes("order_index")) {
+    if (!result.ok && (
+      result.message.includes("order_index") ||
+      result.message.includes("is_published")
+    )) {
       result = await request<SupabasePuzzleRow[]>(
         `${getRestUrl()}?select=id,difficulty,title,grid,placed_shapes&order=created_at.asc`,
         { method: "GET" },
@@ -136,6 +142,7 @@ export function createPuzzleLibraryStore() {
         orderIndex: typeof row.order_index === "number" && Number.isInteger(row.order_index)
           ? row.order_index
           : puzzles.length,
+        isPublished: row.is_published ?? true,
         version: 1,
         grid: row.grid,
         placedShapes: row.placed_shapes,
@@ -210,6 +217,7 @@ export function createPuzzleLibraryStore() {
         difficulty,
         title,
         order_index: orderIndex,
+        is_published: true,
         updated_at: new Date().toISOString(),
       }),
     })
@@ -346,6 +354,7 @@ function normalizeStoredPuzzles(value: StoredPuzzle[] | undefined): StoredPuzzle
       orderIndex: Number.isInteger(puzzle.orderIndex)
         ? puzzle.orderIndex
         : index,
+      isPublished: puzzle.isPublished ?? true,
     }))
     .sort((a, b) => a.orderIndex - b.orderIndex)
     .map((puzzle, index) => ({
@@ -360,6 +369,7 @@ function toSupabaseBody(puzzle: StoredPuzzle): SupabasePuzzleBody {
     difficulty: puzzle.difficulty,
     title: puzzle.title,
     order_index: puzzle.orderIndex,
+    is_published: puzzle.isPublished,
     grid: puzzle.grid,
     placed_shapes: puzzle.placedShapes,
     updated_at: new Date().toISOString(),
