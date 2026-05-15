@@ -33,9 +33,10 @@ export function createShapeMeshGroup(
   const edgeMaterial = options.showEdges === false
     ? null
     : new THREE.LineBasicMaterial({
-      color: options.edgeColor ?? 0x0f172a,
-      opacity: options.edgeOpacity ?? 0.72,
+      color: options.edgeColor ?? 0x00d9ff,
+      opacity: options.edgeOpacity ?? 0.95,
       transparent: true,
+      depthTest: false,
     })
 
   for (const cell of shape.cells) {
@@ -51,6 +52,7 @@ export function createShapeMeshGroup(
     )
 
     if (edges) {
+      edges.renderOrder = 8
       mesh.add(edges)
     }
     group.add(mesh)

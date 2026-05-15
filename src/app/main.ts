@@ -234,8 +234,8 @@ function renderSelectedShape() {
   }, {
     color: isValidPlacement ? getShapeDisplayColor(shape, shapeColorMode) : 0xff3344,
     opacity: 0.58,
-    edgeColor: 0x0f172a,
-    edgeOpacity: 0.86,
+    edgeColor: 0x00d9ff,
+    edgeOpacity: 0.98,
     showEdges: cellEdgesEnabled,
   })
   activeShapeGroup.add(createPreviewRotationGuide(rotatedCells))
@@ -836,8 +836,8 @@ function addPlacedShape(placedShape: PlacedShape) {
     cells: rotatedCells,
   }, {
     color: getPlacedShapeColor(shape),
-    edgeColor: 0x0f172a,
-    edgeOpacity: 0.82,
+    edgeColor: 0x00d9ff,
+    edgeOpacity: 0.95,
     showEdges: cellEdgesEnabled,
   })
   const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
@@ -1553,8 +1553,8 @@ function rebuildPlacedShapeGroup(placedShape: PlacedShapeRecord) {
     cells: rotateShapeCells(shape.cells, placedShape.rotation),
   }, {
     color: getPlacedShapeColor(shape),
-    edgeColor: 0x0f172a,
-    edgeOpacity: 0.82,
+    edgeColor: 0x00d9ff,
+    edgeOpacity: 0.95,
     showEdges: cellEdgesEnabled,
   })
   const worldPos = gridToWorld(placedShape.origin, DEFAULT_GRID_BOUNDS)
