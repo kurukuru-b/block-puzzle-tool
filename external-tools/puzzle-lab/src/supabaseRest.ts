@@ -14,6 +14,13 @@ export type SupabasePuzzleRow = {
 
 export type SupabasePuzzleBackupRow = SupabasePuzzleRow & Record<string, unknown>
 
+export type SupabasePuzzleUpdate = {
+  id: string
+  title?: string
+  order_index?: number
+  updated_at?: string
+}
+
 export function createSupabaseClient(env: SupabaseEnv) {
   const restUrl = `${env.url.replace(/\/$/, "")}/rest/v1/${env.table}`
   const headers = {
@@ -59,6 +66,21 @@ export function createSupabaseClient(env: SupabaseEnv) {
         headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
         body: JSON.stringify(rows),
       })
+    },
+
+    async updatePuzzles(updates: SupabasePuzzleUpdate[]): Promise<void> {
+      for (const update of updates) {
+        const { id, ...body } = update
+
+        await request(
+          `${restUrl}?id=eq.${encodeURIComponent(id)}`,
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=minimal" },
+            body: JSON.stringify(body),
+          },
+        )
+      }
     },
 
     async deleteByTitlePrefix(prefix: string): Promise<number> {

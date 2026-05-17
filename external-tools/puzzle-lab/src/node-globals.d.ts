@@ -23,6 +23,7 @@ declare module "node:fs" {
 
 declare module "node:path" {
   const path: {
+    dirname(path: string): string
     join(...paths: string[]): string
     resolve(...paths: string[]): string
   }
