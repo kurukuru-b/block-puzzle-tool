@@ -24,6 +24,8 @@ npm run puzzle-lab:restore -- external-tools/puzzle-lab/backups/puzzles-YYYY-MM-
 npm run puzzle-lab:restore -- external-tools/puzzle-lab/backups/puzzles-YYYY-MM-DDTHH-MM-SS-ZZZZ.json --apply
 npm run puzzle-lab:generate
 npm run puzzle-lab:generate -- --dry-run
+npm run puzzle-lab:generate -- --difficulty beginner --count 5
+npm run puzzle-lab:generate -- --difficulty hard --count 3 --dry-run
 npm run puzzle-lab:generate -- --cohesion 60 --stability 65 --artistry 45
 npm run puzzle-lab:delete-prefix -- "Codex Art "
 ```
@@ -82,6 +84,19 @@ npm run puzzle-lab:generate
 ```
 
 Use `--attempts-multiplier 2` when stricter thresholds need a wider search.
+
+Difficulty presets assume a five-minute solve target:
+
+- `beginner`: 2 pieces, for early elementary players.
+- `easy`: 3 pieces, with 4-piece puzzles only when the shape is especially clear.
+- `normal`: 4-5 pieces, with 6-piece puzzles only when the result is very readable.
+- `hard`: 5-6 pieces, with 7-piece puzzles only when the result is comparatively simple.
+- `expert`: 7-9 pieces.
+- `challenge`: intentionally excluded from AI generation unless this policy is changed later.
+
+Use `--difficulty beginner|easy|normal|hard|expert` and `--count N` when creating
+a requested batch. Without those flags, the generator runs one pass through the
+standard non-Challenge profiles.
 
 The scripts read Supabase settings from `.env.local`.
 

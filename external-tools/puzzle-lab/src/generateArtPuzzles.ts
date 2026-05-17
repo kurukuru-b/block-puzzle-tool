@@ -1,6 +1,10 @@
 import { DEFAULT_GRID_BOUNDS } from "../../../src/core/grid/GridBounds"
 import { gridPosKey, type GridPos } from "../../../src/core/grid/GridPos"
-import type { PuzzleDifficulty } from "../../../src/core/puzzle/PuzzleDifficulty"
+import {
+  formatDifficulty,
+  isPuzzleDifficulty,
+  type PuzzleDifficulty,
+} from "../../../src/core/puzzle/PuzzleDifficulty"
 import type { PuzzleExport } from "../../../src/core/puzzle/PuzzleExport"
 import type { PlacedShape } from "../../../src/core/puzzle/PlacedShape"
 import {
@@ -33,6 +37,7 @@ type ShapeVariant = {
 type PuzzleSpec = {
   difficulty: PuzzleDifficulty
   title: string
+  label: string
   pieces: number[]
   minBase: number
   minBaseFootprint: number
@@ -47,6 +52,8 @@ type GeneratorOptions = {
   dryRun: boolean
   attemptsMultiplier: number
   thresholds: Partial<PuzzleScoreThresholds>
+  difficulty?: PuzzleDifficulty
+  count?: number
 }
 
 type Candidate = {
@@ -59,102 +66,104 @@ type Candidate = {
 const titlePrefix = getTitlePrefix()
 const options = getGeneratorOptions()
 
-const specs: PuzzleSpec[] = [
+const profiles: Array<Omit<PuzzleSpec, "title">> = [
   {
     difficulty: "beginner",
-    title: createTitle("Beginner", 1),
-    pieces: [2, 3],
+    label: "Little Steps",
+    pieces: [2],
     minBase: 4,
     minBaseFootprint: 4,
     minFootprint: 4,
-    minLevels: 2,
+    minLevels: 1,
     maxLevels: 3,
     attempts: 1800,
-    thresholds: createThresholds({ cohesion: 44, stability: 66, artistry: 25 }),
+    thresholds: createThresholds({ cohesion: 42, stability: 70, artistry: 20 }),
   },
   {
     difficulty: "beginner",
-    title: createTitle("Beginner", 2),
+    label: "First Tower",
+    pieces: [2],
+    minBase: 5,
+    minBaseFootprint: 4,
+    minFootprint: 5,
+    minLevels: 2,
+    maxLevels: 3,
+    attempts: 1800,
+    thresholds: createThresholds({ cohesion: 44, stability: 70, artistry: 22 }),
+  },
+  {
+    difficulty: "easy",
+    label: "Pocket Bridge",
     pieces: [3],
     minBase: 5,
     minBaseFootprint: 4,
     minFootprint: 5,
     minLevels: 2,
-    maxLevels: 3,
-    attempts: 1800,
-    thresholds: createThresholds({ cohesion: 46, stability: 66, artistry: 28 }),
-  },
-  {
-    difficulty: "easy",
-    title: createTitle("Easy", 1),
-    pieces: [3, 4],
-    minBase: 5,
-    minBaseFootprint: 4,
-    minFootprint: 5,
-    minLevels: 2,
     maxLevels: 4,
     attempts: 2400,
-    thresholds: createThresholds({ cohesion: 48, stability: 62, artistry: 32 }),
+    thresholds: createThresholds({ cohesion: 48, stability: 66, artistry: 28 }),
   },
   {
     difficulty: "easy",
-    title: createTitle("Easy", 2),
+    label: "Clear Corner",
     pieces: [4],
     minBase: 6,
     minBaseFootprint: 5,
     minFootprint: 6,
     minLevels: 2,
-    maxLevels: 4,
-    attempts: 2400,
-    thresholds: createThresholds({ cohesion: 50, stability: 64, artistry: 34 }),
+    maxLevels: 3,
+    attempts: 3000,
+    thresholds: createThresholds({ cohesion: 53, stability: 70, artistry: 30 }),
   },
   {
     difficulty: "normal",
-    title: createTitle("Normal", 1),
-    pieces: [5],
-    minBase: 7,
-    minBaseFootprint: 6,
+    label: "Steady Cross",
+    pieces: [4, 5],
+    minBase: 6,
+    minBaseFootprint: 5,
+    minFootprint: 7,
+    minLevels: 2,
+    maxLevels: 4,
+    attempts: 3000,
+    thresholds: createThresholds({ cohesion: 54, stability: 64, artistry: 34 }),
+  },
+  {
+    difficulty: "normal",
+    label: "Simple Spire",
+    pieces: [6],
+    minBase: 8,
+    minBaseFootprint: 7,
     minFootprint: 8,
     minLevels: 3,
-    attempts: 3000,
-    thresholds: createThresholds({ cohesion: 54, stability: 64, artistry: 38 }),
+    maxLevels: 4,
+    attempts: 4200,
+    thresholds: createThresholds({ cohesion: 60, stability: 70, artistry: 36 }),
   },
   {
-    difficulty: "normal",
-    title: createTitle("Normal", 2),
+    difficulty: "hard",
+    label: "Folded Keep",
     pieces: [5, 6],
     minBase: 8,
     minBaseFootprint: 6,
     minFootprint: 8,
     minLevels: 3,
-    attempts: 3000,
-    thresholds: createThresholds({ cohesion: 56, stability: 64, artistry: 40 }),
-  },
-  {
-    difficulty: "hard",
-    title: createTitle("Hard", 1),
-    pieces: [6, 7],
-    minBase: 8,
-    minBaseFootprint: 6,
-    minFootprint: 9,
-    minLevels: 3,
     attempts: 4200,
-    thresholds: createThresholds({ cohesion: 58, stability: 62, artistry: 45 }),
+    thresholds: createThresholds({ cohesion: 58, stability: 62, artistry: 40 }),
   },
   {
     difficulty: "hard",
-    title: createTitle("Hard", 2),
-    pieces: [7, 8],
+    label: "Clean Labyrinth",
+    pieces: [7],
     minBase: 9,
     minBaseFootprint: 7,
     minFootprint: 10,
     minLevels: 3,
-    attempts: 4200,
-    thresholds: createThresholds({ cohesion: 60, stability: 62, artistry: 46 }),
+    attempts: 5200,
+    thresholds: createThresholds({ cohesion: 64, stability: 68, artistry: 42 }),
   },
   {
     difficulty: "expert",
-    title: createTitle("Expert", 1),
+    label: "Impossible Garden",
     pieces: [7, 8],
     minBase: 9,
     minBaseFootprint: 7,
@@ -165,36 +174,14 @@ const specs: PuzzleSpec[] = [
   },
   {
     difficulty: "expert",
-    title: createTitle("Expert", 2),
-    pieces: [8],
-    minBase: 10,
-    minBaseFootprint: 7,
-    minFootprint: 11,
-    minLevels: 4,
-    attempts: 4600,
-    thresholds: createThresholds({ cohesion: 62, stability: 61, artistry: 49 }),
-  },
-  {
-    difficulty: "challenge",
-    title: createTitle("Challenge", 1),
+    label: "Glass Cathedral",
     pieces: [8, 9],
     minBase: 10,
     minBaseFootprint: 7,
     minFootprint: 11,
     minLevels: 4,
-    attempts: 4800,
-    thresholds: createThresholds({ cohesion: 62, stability: 60, artistry: 48 }),
-  },
-  {
-    difficulty: "challenge",
-    title: createTitle("Challenge", 2),
-    pieces: [9],
-    minBase: 10,
-    minBaseFootprint: 8,
-    minFootprint: 12,
-    minLevels: 4,
-    attempts: 5200,
-    thresholds: createThresholds({ cohesion: 64, stability: 60, artistry: 50 }),
+    attempts: 5600,
+    thresholds: createThresholds({ cohesion: 64, stability: 62, artistry: 50 }),
   },
 ]
 
@@ -227,6 +214,7 @@ async function main() {
     existingRows.map((row) => signature(row.placed_shapes)),
   )
   const nextOrderIndexByDifficulty = getNextOrderIndexByDifficulty(existingRows)
+  const specs = createSpecs(existingRows)
   const rows: SupabasePuzzleRow[] = []
 
   for (const spec of specs) {
@@ -280,6 +268,56 @@ function getNextOrderIndexByDifficulty(
     result.set(
       row.difficulty,
       Math.max(result.get(row.difficulty) ?? 0, row.order_index + 1),
+    )
+  }
+
+  return result
+}
+
+function createSpecs(existingRows: SupabasePuzzleRow[]): PuzzleSpec[] {
+  const availableProfiles = options.difficulty
+    ? profiles.filter((profile) => profile.difficulty === options.difficulty)
+    : profiles
+
+  if (availableProfiles.length === 0) {
+    throw new Error(`No generator profiles found for: ${String(options.difficulty)}`)
+  }
+
+  const titleCountsByDifficulty = getNextTitleCountByDifficulty(existingRows)
+  const requestedCount = options.count ?? availableProfiles.length
+  const result: PuzzleSpec[] = []
+
+  for (let index = 0; index < requestedCount; index += 1) {
+    const profile = options.count === undefined
+      ? availableProfiles[index % availableProfiles.length]!
+      : randomItem(availableProfiles)
+    const nextTitleCount = titleCountsByDifficulty.get(profile.difficulty) ?? 1
+
+    titleCountsByDifficulty.set(profile.difficulty, nextTitleCount + 1)
+    result.push({
+      ...profile,
+      title: createTitle(profile, nextTitleCount),
+    })
+  }
+
+  return result
+}
+
+function getNextTitleCountByDifficulty(
+  rows: SupabasePuzzleRow[],
+): Map<PuzzleDifficulty, number> {
+  const result = new Map<PuzzleDifficulty, number>()
+
+  for (const row of rows) {
+    const match = row.title.match(/^Codex\s+.+\s+#(\d+)$/)
+
+    if (!match) {
+      continue
+    }
+
+    result.set(
+      row.difficulty,
+      Math.max(result.get(row.difficulty) ?? 1, Number(match[1]) + 1),
     )
   }
 
@@ -551,16 +589,53 @@ function createThresholds(defaults: PuzzleScoreThresholds): PuzzleScoreThreshold
 
 function getGeneratorOptions(): GeneratorOptions {
   const args = process.argv.slice(2)
+  const difficulty = getDifficultyOption(args)
 
   return {
     dryRun: args.includes("--dry-run"),
     attemptsMultiplier: getNumberOption(args, "--attempts-multiplier", 1),
+    difficulty,
+    count: getPositiveIntegerOption(args, "--count"),
     thresholds: {
       cohesion: getThresholdOption(args, "--cohesion", "PUZZLE_LAB_MIN_COHESION"),
       stability: getThresholdOption(args, "--stability", "PUZZLE_LAB_MIN_STABILITY"),
       artistry: getThresholdOption(args, "--artistry", "PUZZLE_LAB_MIN_ARTISTRY"),
     },
   }
+}
+
+function getDifficultyOption(args: string[]): PuzzleDifficulty | undefined {
+  const index = args.indexOf("--difficulty")
+
+  if (index === -1) {
+    return undefined
+  }
+
+  const rawValue = args[index + 1]
+
+  if (!isPuzzleDifficulty(rawValue)) {
+    throw new Error("--difficulty must be one of: beginner, easy, normal, hard, expert, challenge.")
+  }
+
+  if (rawValue === "challenge") {
+    throw new Error("Challenge is intentionally excluded from AI generation.")
+  }
+
+  return rawValue
+}
+
+function getPositiveIntegerOption(args: string[], flagName: string): number | undefined {
+  const value = getOptionalNumberOption(args, flagName)
+
+  if (value === undefined) {
+    return undefined
+  }
+
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`${flagName} must be a positive integer.`)
+  }
+
+  return value
 }
 
 function getThresholdOption(
@@ -645,8 +720,10 @@ function getTitlePrefix(): string {
   return value || "Codex Art"
 }
 
-function createTitle(difficultyLabel: string, index: number): string {
-  return `${titlePrefix} ${difficultyLabel} ${index}`
+function createTitle(profile: Omit<PuzzleSpec, "title">, index: number): string {
+  const difficultyLabel = formatDifficulty(profile.difficulty)
+
+  return `${titlePrefix} ${difficultyLabel} ${profile.label} #${index}`
 }
 
 main().catch((error: unknown) => {
