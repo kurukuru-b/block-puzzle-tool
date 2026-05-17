@@ -33,7 +33,9 @@ export function createMainScene() {
     controls.minDistance = 2.2
     controls.maxDistance = 12
 
-    scene.add(createFloorMarker(DEFAULT_GRID_BOUNDS))
+    const floorMarker = createFloorMarker(DEFAULT_GRID_BOUNDS)
+
+    scene.add(floorMarker)
 
     const gridCells = createGridCellMeshes(DEFAULT_GRID_BOUNDS)
     
@@ -87,5 +89,7 @@ export function createMainScene() {
         camera,
         renderer,
         controls,
+        floorMarker,
+        gridCells,
     }
 }

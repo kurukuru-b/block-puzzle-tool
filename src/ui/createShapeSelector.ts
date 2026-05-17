@@ -75,10 +75,14 @@ type CreateShapeSelectorParams = {
   initialShapeColorMode: ShapeColorMode
   initialCellEdgesEnabled: boolean
   initialCoreMarkerEnabled: boolean
+  initialGridVisible: boolean
+  initialFloorVisible: boolean
   onModeChange: (mode: AppMode) => void
   onToggleShapeColorMode: () => void
   onToggleCellEdges: () => void
   onToggleCoreMarker: () => void
+  onToggleGrid: () => void
+  onToggleFloor: () => void
   onSelect: (shapeId: string) => void
   onClearSelection: () => void
   onSelectPlacedShape: (placedShapeId: string) => void
@@ -140,10 +144,14 @@ export function createShapeSelector({
   initialShapeColorMode,
   initialCellEdgesEnabled,
   initialCoreMarkerEnabled,
+  initialGridVisible,
+  initialFloorVisible,
   onModeChange,
   onToggleShapeColorMode,
   onToggleCellEdges,
   onToggleCoreMarker,
+  onToggleGrid,
+  onToggleFloor,
   onSelect,
   onClearSelection,
   onSelectPlacedShape,
@@ -311,6 +319,8 @@ export function createShapeSelector({
   let shapeColorMode = initialShapeColorMode
   let cellEdgesEnabled = initialCellEdgesEnabled
   let coreMarkerEnabled = initialCoreMarkerEnabled
+  let gridVisible = initialGridVisible
+  let floorVisible = initialFloorVisible
   let activeHintMenuKey: string | null = null
   let nextHintEntryId = 1
   let hintEntries: HintEntry[] = []
@@ -345,6 +355,24 @@ export function createShapeSelector({
     coreMarkerEnabled = !coreMarkerEnabled
     updateCoreMarkerButton()
     onToggleCoreMarker()
+  })
+
+  const gridButton = document.createElement("button")
+  gridButton.type = "button"
+  gridButton.className = "secondary-action-button grid-toggle-button"
+  gridButton.addEventListener("click", () => {
+    gridVisible = !gridVisible
+    updateGridButton()
+    onToggleGrid()
+  })
+
+  const floorButton = document.createElement("button")
+  floorButton.type = "button"
+  floorButton.className = "secondary-action-button floor-toggle-button"
+  floorButton.addEventListener("click", () => {
+    floorVisible = !floorVisible
+    updateFloorButton()
+    onToggleFloor()
   })
 
   const colorButton = document.createElement("button")
@@ -405,6 +433,8 @@ export function createShapeSelector({
   updateShapeColorModeButton()
   updateCellEdgesButton()
   updateCoreMarkerButton()
+  updateGridButton()
+  updateFloorButton()
 
   const rotationControls = document.createElement("div")
   rotationControls.className = "rotation-controls"
@@ -964,6 +994,8 @@ export function createShapeSelector({
     colorButton,
     cellEdgesButton,
     coreMarkerButton,
+    gridButton,
+    floorButton,
   )
 
   const dataToolsToggleButton = document.createElement("button")
@@ -1440,6 +1472,11 @@ export function createShapeSelector({
     }
   }
 
+  function removeHintEntries(predicate: (entry: HintEntry) => boolean) {
+    hintEntries = hintEntries.filter((entry) => !predicate(entry))
+    renderHintEntries()
+  }
+
   function renderHintEntries() {
     hintResultTitle.textContent = `Hints (${hintEntries.length})`
     hintResultBody.replaceChildren()
@@ -1525,12 +1562,22 @@ export function createShapeSelector({
         button.addEventListener("click", () => {
           if (options.withToggle) {
             const willReveal = !shape.isRevealed
+
             onToggleHintShape(shape.shapeId)
-            addHintEntry({
-              title: "Reveal piece",
-              text: `${shape.label}：${willReveal ? "on" : "off"}`,
-              color: shape.color,
-            })
+
+            if (willReveal) {
+              addHintEntry({
+                title: "Reveal piece",
+                text: `${shape.label}：on`,
+                color: shape.color,
+              })
+            } else {
+              removeHintEntries((entry) => (
+                entry.title === "Reveal piece" &&
+                entry.text === `${shape.label}：on`
+              ))
+            }
+
             renderHintPieceReveal("reveal-piece")
             return
           }
@@ -1734,6 +1781,26 @@ export function createShapeSelector({
     )
     coreMarkerButton.classList.toggle("is-selected", coreMarkerEnabled)
     coreMarkerButton.setAttribute("aria-pressed", String(coreMarkerEnabled))
+  }
+
+  function updateGridButton() {
+    gridButton.textContent = gridVisible ? "Grid On" : "Grid Off"
+    gridButton.setAttribute(
+      "aria-label",
+      gridVisible ? "Hide grid" : "Show grid",
+    )
+    gridButton.classList.toggle("is-selected", gridVisible)
+    gridButton.setAttribute("aria-pressed", String(gridVisible))
+  }
+
+  function updateFloorButton() {
+    floorButton.textContent = floorVisible ? "Floor On" : "Floor Off"
+    floorButton.setAttribute(
+      "aria-label",
+      floorVisible ? "Hide floor" : "Show floor",
+    )
+    floorButton.classList.toggle("is-selected", floorVisible)
+    floorButton.setAttribute("aria-pressed", String(floorVisible))
   }
 
   function updateShapeButtonAppearances() {

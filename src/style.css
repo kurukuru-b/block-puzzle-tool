@@ -248,12 +248,12 @@ button {
 
 .hint-overlay {
   position: absolute;
-  right: 18px;
-  bottom: 154px;
+  right: 222px;
+  bottom: 18px;
   z-index: 3;
   display: grid;
   gap: 8px;
-  width: 230px;
+  width: 190px;
   pointer-events: auto;
 }
 
@@ -1001,7 +1001,9 @@ button {
 .color-mode-button,
 .color-toggle-button,
 .cell-edges-button,
-.core-marker-button {
+.core-marker-button,
+.grid-toggle-button,
+.floor-toggle-button {
   width: 100%;
 }
 

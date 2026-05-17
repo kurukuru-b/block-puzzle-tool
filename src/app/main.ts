@@ -96,6 +96,8 @@ let viewerHintCellPickResultHandler: ((result: ViewerHintCellResult) => void) | 
 let shapeColorMode: ShapeColorMode = "new"
 let cellEdgesEnabled = false
 let coreMarkerEnabled = false
+let gridVisible = true
+let floorVisible = true
 let timerMode: TimerMode = "down"
 let timerRunning = false
 let timerElapsedSeconds = 0
@@ -1464,6 +1466,16 @@ function toggleCoreMarker() {
   renderSelectedShape()
 }
 
+function toggleGridVisibility() {
+  gridVisible = !gridVisible
+  mainScene.gridCells.visible = gridVisible
+}
+
+function toggleFloorVisibility() {
+  floorVisible = !floorVisible
+  mainScene.floorMarker.visible = floorVisible
+}
+
 function startStopTimer() {
   if (timerRunning) {
     stopTimer()
@@ -2153,10 +2165,14 @@ const shapeSelector = createShapeSelector({
   initialShapeColorMode: shapeColorMode,
   initialCellEdgesEnabled: cellEdgesEnabled,
   initialCoreMarkerEnabled: coreMarkerEnabled,
+  initialGridVisible: gridVisible,
+  initialFloorVisible: floorVisible,
   onModeChange: setAppMode,
   onToggleShapeColorMode: toggleShapeColorMode,
   onToggleCellEdges: toggleCellEdges,
   onToggleCoreMarker: toggleCoreMarker,
+  onToggleGrid: toggleGridVisibility,
+  onToggleFloor: toggleFloorVisibility,
   onSelect: selectShape,
   onClearSelection: clearSelection,
   onSelectPlacedShape: selectPlacedShape,
