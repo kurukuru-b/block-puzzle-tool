@@ -226,6 +226,7 @@ async function main() {
   const existingSignatures = new Set(
     existingRows.map((row) => signature(row.placed_shapes)),
   )
+  const nextOrderIndexByDifficulty = getNextOrderIndexByDifficulty(existingRows)
   const rows: SupabasePuzzleRow[] = []
 
   for (const spec of specs) {
@@ -247,9 +248,15 @@ async function main() {
       id: `codex-art-${spec.difficulty}-${Date.now()}-${rows.length + 1}`,
       difficulty: spec.difficulty,
       title: spec.title,
+      order_index: nextOrderIndexByDifficulty.get(spec.difficulty) ?? 0,
+      is_published: true,
       grid: puzzle.grid,
       placed_shapes: puzzle.placedShapes,
     })
+    nextOrderIndexByDifficulty.set(
+      spec.difficulty,
+      (nextOrderIndexByDifficulty.get(spec.difficulty) ?? 0) + 1,
+    )
 
     console.log(formatCandidate(spec.title, candidate))
   }
@@ -262,6 +269,21 @@ async function main() {
   await client.insertPuzzles(rows)
 
   console.log(`Inserted ${rows.length} puzzle(s).`)
+}
+
+function getNextOrderIndexByDifficulty(
+  rows: SupabasePuzzleRow[],
+): Map<PuzzleDifficulty, number> {
+  const result = new Map<PuzzleDifficulty, number>()
+
+  for (const row of rows) {
+    result.set(
+      row.difficulty,
+      Math.max(result.get(row.difficulty) ?? 0, row.order_index + 1),
+    )
+  }
+
+  return result
 }
 
 function generateCandidate(spec: PuzzleSpec, usedSignatures: Set<string>): Candidate {

@@ -6,6 +6,8 @@ export type SupabasePuzzleRow = {
   id: string
   difficulty: PuzzleDifficulty
   title: string
+  order_index: number
+  is_published: boolean
   grid: PuzzleExport["grid"]
   placed_shapes: PuzzleExport["placedShapes"]
 }
@@ -23,7 +25,7 @@ export function createSupabaseClient(env: SupabaseEnv) {
   return {
     async fetchPuzzles(): Promise<SupabasePuzzleRow[]> {
       return request<SupabasePuzzleRow[]>(
-        `${restUrl}?select=id,difficulty,title,grid,placed_shapes`,
+        `${restUrl}?select=id,difficulty,title,order_index,is_published,grid,placed_shapes&order=order_index.asc.nullslast&order=created_at.asc`,
         { method: "GET" },
       )
     },

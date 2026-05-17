@@ -18,7 +18,7 @@ npm run puzzle-lab:restore -- external-tools/puzzle-lab/backups/puzzles-YYYY-MM-
 npm run puzzle-lab:generate
 npm run puzzle-lab:generate -- --dry-run
 npm run puzzle-lab:generate -- --cohesion 60 --stability 65 --artistry 45
-node external-tools/puzzle-lab/dist/block-puzzle-tool/external-tools/puzzle-lab/src/deletePuzzlesByTitlePrefix.js "Codex Art "
+npm run puzzle-lab:delete-prefix -- "Codex Art "
 ```
 
 To create a new named batch:
@@ -52,6 +52,11 @@ npm run puzzle-lab:generate
 Use `--attempts-multiplier 2` when stricter thresholds need a wider search.
 
 The scripts read Supabase settings from `.env.local`.
+
+Generated rows explicitly set the final beta DB fields:
+
+- `order_index`: appended to the end of the target difficulty.
+- `is_published`: `true`.
 
 Backups are written to `external-tools/puzzle-lab/backups/` and are ignored by
 Git.

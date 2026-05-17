@@ -4,8 +4,10 @@ This app can sync registered puzzles to Supabase. If the environment variables a
 
 1. Create a Supabase project.
 2. Open the Supabase SQL editor and run `supabase/puzzles.sql`.
-3. Copy `.env.example` to `.env.local`.
-4. Set these values:
+3. Run `supabase/puzzles-final-schema.sql` to apply the beta final columns
+   and six difficulty ids.
+4. Copy `.env.example` to `.env.local`.
+5. Set these values:
 
 ```env
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
@@ -13,7 +15,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-or-publishable-key
 VITE_SUPABASE_PUZZLE_TABLE=puzzles
 ```
 
-5. Restart the Vite dev server.
+6. Restart the Vite dev server.
 
 ## GitHub Pages
 
@@ -35,7 +37,7 @@ After saving the variables, push to `main` again or rerun the Pages workflow.
 
 The current SQL allows public read/write access through the browser key. That is fine for a private prototype, but a public production tool should move writes behind Supabase Auth or an Edge Function.
 
-## Beta Difficulty Migration
+## Beta Final Schema
 
 The beta app uses six difficulty ids:
 
@@ -43,8 +45,22 @@ The beta app uses six difficulty ids:
 beginner, easy, normal, hard, expert, challenge
 ```
 
-If the table was created during alpha, update the difficulty check constraint
-before registering `beginner` or `expert` puzzles:
+It also expects these final management columns:
+
+```text
+order_index, is_published
+```
+
+If the table was created during alpha, run:
+
+```sql
+-- Full version is in supabase/puzzles-final-schema.sql
+```
+
+That migration updates the difficulty check, fills missing order values, marks
+existing rows as published, and adds the published/order index.
+
+The short difficulty-only SQL is kept here only for reference:
 
 ```sql
 alter table public.puzzles
