@@ -11,6 +11,7 @@ are not part of the browser app itself. The scripts import shared logic from
 ```powershell
 npm run puzzle-lab:build
 npm run puzzle-lab:backup
+npm run puzzle-lab:inspect
 npm run puzzle-lab:restore -- latest
 npm run puzzle-lab:restore -- latest --apply
 npm run puzzle-lab:restore -- external-tools/puzzle-lab/backups/puzzles-YYYY-MM-DDTHH-MM-SS-ZZZZ.json
@@ -20,6 +21,14 @@ npm run puzzle-lab:generate -- --dry-run
 npm run puzzle-lab:generate -- --cohesion 60 --stability 65 --artistry 45
 npm run puzzle-lab:delete-prefix -- "Codex Art "
 ```
+
+`puzzle-lab:inspect` is read-only. It reports:
+
+- difficulty counts and published/hidden counts
+- duplicate titles
+- duplicate cell layouts
+- `order_index` duplicates or gaps
+- invalid puzzle placement data
 
 To create a new named batch:
 
