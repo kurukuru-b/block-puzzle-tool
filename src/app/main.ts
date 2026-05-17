@@ -448,6 +448,7 @@ function setAppMode(mode: AppMode) {
     resetTimer()
     clearViewerProblemSelection()
   } else {
+    shapeColorEnabled = true
     if (previousMode === "viewer" && editorBoardSnapshotBeforeViewer) {
       restorePlacedShapeSnapshot(editorBoardSnapshotBeforeViewer)
       editorBoardSnapshotBeforeViewer = null
@@ -1895,10 +1896,11 @@ function rebuildAllPlacedShapeGroups() {
 }
 
 function getPlacedShapeColor(shape: typeof shapeDefinitions[number]): number {
-  if (
-    !shapeColorEnabled &&
-    !viewerHintRevealedShapeIds.has(shape.id)
-  ) {
+  if (!shapeColorEnabled && viewerHintRevealedShapeIds.has(shape.id)) {
+    return getShapeDisplayColor(shape, shapeColorMode)
+  }
+
+  if (!shapeColorEnabled) {
     return 0xd9dee8
   }
 

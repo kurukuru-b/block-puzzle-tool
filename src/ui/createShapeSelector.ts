@@ -200,11 +200,35 @@ export function createShapeSelector({
   const timerOverlay = document.createElement("div")
   timerOverlay.className = "timer-overlay"
 
+  const timerOverlayActions = document.createElement("div")
+  timerOverlayActions.className = "timer-overlay-actions"
+  timerOverlay.appendChild(timerOverlayActions)
+
   const timerOverlayButton = document.createElement("button")
   timerOverlayButton.type = "button"
   timerOverlayButton.className = "timer-overlay-button"
   timerOverlayButton.addEventListener("click", onTimerStartStop)
-  timerOverlay.appendChild(timerOverlayButton)
+  timerOverlayActions.appendChild(timerOverlayButton)
+
+  const timerOverlayResetButton = document.createElement("button")
+  timerOverlayResetButton.type = "button"
+  timerOverlayResetButton.className = "timer-overlay-button"
+  timerOverlayResetButton.textContent = "Reset"
+  timerOverlayResetButton.addEventListener("click", onTimerReset)
+  timerOverlayActions.appendChild(timerOverlayResetButton)
+
+  const timerOverlayExpandButton = document.createElement("button")
+  timerOverlayExpandButton.type = "button"
+  timerOverlayExpandButton.className = "timer-overlay-button timer-overlay-expand-button"
+  timerOverlayExpandButton.textContent = "More"
+  timerOverlayExpandButton.setAttribute("aria-expanded", "false")
+  timerOverlayExpandButton.addEventListener("click", () => {
+    const isExpanded = timerOverlay.classList.toggle("is-expanded")
+
+    timerOverlayExpandButton.textContent = isExpanded ? "Less" : "More"
+    timerOverlayExpandButton.setAttribute("aria-expanded", String(isExpanded))
+  })
+  timerOverlayActions.appendChild(timerOverlayExpandButton)
 
   const timerOverlayText = document.createElement("span")
   timerOverlayText.className = "timer-overlay-text"
@@ -838,7 +862,7 @@ export function createShapeSelector({
 
   const timerPanel = document.createElement("div")
   timerPanel.className = "timer-panel"
-  viewerPanel.appendChild(timerPanel)
+  timerOverlay.appendChild(timerPanel)
 
   const timerLabel = document.createElement("span")
   timerLabel.className = "timer-label"

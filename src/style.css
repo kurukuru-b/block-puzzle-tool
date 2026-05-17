@@ -199,6 +199,12 @@ button {
   pointer-events: auto;
 }
 
+.timer-overlay-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .timer-overlay-button {
   height: 28px;
   border: 1px solid rgba(37, 99, 235, 0.26);
@@ -217,6 +223,22 @@ button {
 
 .timer-overlay-text {
   font: 900 46px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.timer-overlay .timer-panel {
+  display: none;
+  margin-top: 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(105, 114, 130, 0.22);
+}
+
+.timer-overlay.is-expanded .timer-panel {
+  display: grid;
+}
+
+.timer-overlay .timer-label,
+.timer-overlay .timer-controls {
+  display: none;
 }
 
 .timer-overlay.is-running {
