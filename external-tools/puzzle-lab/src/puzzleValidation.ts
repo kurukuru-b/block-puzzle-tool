@@ -39,8 +39,8 @@ export function validatePuzzleExport(puzzle: PuzzleExport) {
       placedShape.rotation.y,
       placedShape.rotation.z,
     ]) {
-      if (!Number.isInteger(value) || value < 0 || value > 3) {
-        throw new Error(`Rotation must be turn counts 0..3: ${placedShape.shapeId}`)
+      if (!Number.isInteger(value)) {
+        throw new Error(`Rotation must be integer turn counts: ${placedShape.shapeId}`)
       }
     }
 
