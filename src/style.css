@@ -58,8 +58,9 @@ button {
 
 .title-screen__content {
   display: grid;
-  gap: 28px;
+  gap: 34px;
   justify-items: center;
+  transform: translateY(-7vh);
 }
 
 .title-screen__title {
@@ -75,12 +76,13 @@ button {
 
 .title-screen__actions {
   display: grid;
-  width: min(320px, calc(100vw - 48px));
-  gap: 12px;
+  width: min(560px, calc(100vw - 48px));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .title-action-button {
-  height: 54px;
+  height: 72px;
   border: 1px solid rgba(15, 23, 42, 0.16);
   border-radius: 8px;
   color: #ffffff;
@@ -89,6 +91,17 @@ button {
   font-size: 20px;
   font-weight: 900;
   cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .title-screen__content {
+    transform: translateY(-5vh);
+  }
+
+  .title-screen__actions {
+    grid-template-columns: 1fr;
+    width: min(340px, calc(100vw - 48px));
+  }
 }
 
 .title-action-button:hover {
