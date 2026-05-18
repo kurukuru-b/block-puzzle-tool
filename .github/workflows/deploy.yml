@@ -2,7 +2,7 @@ name: Deploy Vite site to GitHub Pages
 
 on:
   push:
-    branches: [main, beta]
+    branches: [main, beta, v2]
 
 permissions:
   contents: read
@@ -60,6 +60,29 @@ jobs:
       - name: Build beta
         working-directory: beta-src
         run: npx vite build --base=/block-puzzle-tool/beta/ --outDir ../dist/beta
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_PUZZLE_TABLE: ${{ vars.VITE_SUPABASE_PUZZLE_TABLE || 'puzzles' }}
+          VITE_APP_PASSWORD: ${{ vars.VITE_APP_PASSWORD }}
+
+      - name: Checkout v2
+        uses: actions/checkout@v4
+        with:
+          ref: v2
+          path: v2-src
+
+      - name: Install v2 dependencies
+        working-directory: v2-src
+        run: npm ci
+
+      - name: Typecheck v2
+        working-directory: v2-src
+        run: npm run typecheck
+
+      - name: Build v2
+        working-directory: v2-src
+        run: npx vite build --base=/block-puzzle-tool/v2/ --outDir ../dist/v2
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
