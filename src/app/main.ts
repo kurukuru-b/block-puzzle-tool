@@ -50,14 +50,11 @@ import {
   type PuzzleLibrary,
   type StoredPuzzle,
 } from "./puzzleLibraryStore"
-import { requirePasswordAccess } from "./passwordGate"
 import {
   getShapeDisplayColor,
   getShapeDisplayLabel,
   type ShapeColorMode,
 } from "./shapeAppearance"
-
-await requirePasswordAccess()
 
 const APP_VERSION = import.meta.env.VITE_APP_COMMIT ?? "dev"
 const mainScene = createMainScene()
@@ -72,8 +69,12 @@ if (!app) {
 }
 
 const selectedShapeActions = createSelectedShapeActions()
+const titleScreen = createTitleScreen({
+  onEdit: enterEditMode,
+})
 
 app.appendChild(selectedShapeActions.element)
+app.appendChild(titleScreen.element)
 
 type PlacedShapeRecord = PlacedShape & {
   id: string
@@ -641,6 +642,64 @@ function exportPuzzle(): string {
   validateSupportedPuzzle(puzzle)
 
   return stringifyPuzzleExport(puzzle)
+}
+
+function createTitleScreen({ onEdit }: { onEdit: () => void }) {
+  const element = document.createElement("section")
+  element.className = "title-screen"
+  element.setAttribute("aria-label", "TRI²CUBE title")
+
+  const settingsButton = document.createElement("button")
+  settingsButton.type = "button"
+  settingsButton.className = "title-icon-button"
+  settingsButton.setAttribute("aria-label", "Settings")
+  settingsButton.textContent = "⚙"
+  element.appendChild(settingsButton)
+
+  const content = document.createElement("div")
+  content.className = "title-screen__content"
+  element.appendChild(content)
+
+  const title = document.createElement("h1")
+  title.className = "title-screen__title"
+  title.textContent = "TRI²CUBE"
+  content.appendChild(title)
+
+  const actions = document.createElement("div")
+  actions.className = "title-screen__actions"
+  content.appendChild(actions)
+
+  const editButton = document.createElement("button")
+  editButton.type = "button"
+  editButton.className = "title-action-button"
+  editButton.textContent = "Edit"
+  editButton.addEventListener("click", onEdit)
+  actions.appendChild(editButton)
+
+  const playButton = document.createElement("button")
+  playButton.type = "button"
+  playButton.className = "title-action-button"
+  playButton.textContent = "Play"
+  actions.appendChild(playButton)
+
+  const creditButton = document.createElement("button")
+  creditButton.type = "button"
+  creditButton.className = "title-credit-button"
+  creditButton.textContent = "Credit"
+  element.appendChild(creditButton)
+
+  return {
+    element,
+    hide() {
+      element.hidden = true
+    },
+  }
+}
+
+function enterEditMode() {
+  titleScreen.hide()
+  shapeSelector.element.hidden = false
+  setAppMode("editor")
 }
 
 function validateEditorBoard(): { ok: boolean, message: string } {
@@ -2219,6 +2278,7 @@ updateSelectedPlacedShape = shapeSelector.setSelectedPlacedShape
 updateSelectedShapeControl = shapeSelector.setSelectedShape
 updateShapeAvailability = shapeSelector.setShapeAvailability
 app.appendChild(shapeSelector.element)
+shapeSelector.element.hidden = true
 
 createGridPointerController({
   bounds: DEFAULT_GRID_BOUNDS,

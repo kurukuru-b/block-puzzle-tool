@@ -30,81 +30,108 @@ button {
   font: inherit;
 }
 
-.password-gate {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background:
-    linear-gradient(rgba(216, 222, 233, 0.82), rgba(216, 222, 233, 0.92)),
-    #d8dee9;
-}
-
-.password-gate__panel {
-  display: grid;
-  width: min(360px, 100%);
-  gap: 10px;
-  padding: 20px;
-  border: 1px solid rgba(105, 114, 130, 0.3);
-  border-radius: 8px;
-  color: #141820;
-  background: rgba(248, 250, 252, 0.94);
-  box-shadow: 0 18px 38px rgba(42, 52, 68, 0.18);
-}
-
-.password-gate__panel h1 {
-  margin: 0 0 6px;
-  font-size: 20px;
-  line-height: 1.2;
-}
-
-.password-gate__panel label {
-  font-size: 12px;
-  font-weight: 800;
-  color: #4b5563;
-}
-
-.password-gate__panel input {
-  height: 42px;
-  padding: 0 12px;
-  border: 1px solid rgba(105, 114, 130, 0.34);
-  border-radius: 6px;
-  color: #141820;
-  background: #ffffff;
-  font: inherit;
-}
-
-.password-gate__panel input:focus {
-  border-color: #2563eb;
-  outline: 2px solid rgba(37, 99, 235, 0.22);
-  outline-offset: 0;
-}
-
-.password-gate__panel button {
-  height: 42px;
-  border: 1px solid rgba(37, 99, 235, 0.3);
-  border-radius: 6px;
-  color: #ffffff;
-  background: #2563eb;
-  font-weight: 850;
-  cursor: pointer;
-}
-
-.password-gate__message {
-  min-height: 18px;
-  margin: 0;
-  color: #dc2626;
-  font-size: 12px;
-  font-weight: 750;
-}
-
 #app {
   position: fixed;
   inset: 0;
   z-index: 1;
   pointer-events: none;
+}
+
+.title-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  color: #111827;
+  background:
+    linear-gradient(rgba(241, 245, 249, 0.78), rgba(226, 232, 240, 0.9)),
+    radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.68), transparent 38%),
+    #d8dee9;
+  pointer-events: auto;
+}
+
+.title-screen[hidden] {
+  display: none;
+}
+
+.title-screen__content {
+  display: grid;
+  gap: 28px;
+  justify-items: center;
+}
+
+.title-screen__title {
+  margin: 0;
+  color: #111827;
+  font-size: clamp(56px, 9vw, 124px);
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 0.95;
+  text-align: center;
+  text-shadow: 0 14px 34px rgba(42, 52, 68, 0.18);
+}
+
+.title-screen__actions {
+  display: grid;
+  width: min(320px, calc(100vw - 48px));
+  gap: 12px;
+}
+
+.title-action-button {
+  height: 54px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 8px;
+  color: #ffffff;
+  background: #1f2937;
+  box-shadow: 0 14px 28px rgba(42, 52, 68, 0.18);
+  font-size: 20px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.title-action-button:hover {
+  background: #111827;
+}
+
+.title-icon-button {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 6px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 24px rgba(42, 52, 68, 0.14);
+  font-size: 24px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.title-icon-button:hover,
+.title-credit-button:hover {
+  background: #ffffff;
+}
+
+.title-credit-button {
+  position: absolute;
+  left: 22px;
+  bottom: 22px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 6px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 24px rgba(42, 52, 68, 0.12);
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
 }
 
 .editor-panels {
