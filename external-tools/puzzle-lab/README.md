@@ -26,6 +26,10 @@ npm run puzzle-lab:generate
 npm run puzzle-lab:generate -- --dry-run
 npm run puzzle-lab:generate -- --difficulty beginner --count 5
 npm run puzzle-lab:generate -- --difficulty hard --count 3 --dry-run
+npm run puzzle-lab:generate -- --difficulty normal --count 3 --seed trial-1 --dry-run
+npm run puzzle-lab:generate -- --difficulty easy --count 5 --name-prefix 'Codex Trial' --publish false
+npm run puzzle-lab:generate -- --difficulty hard --count 2 --dry-run-json
+npm run puzzle-lab:generate -- --difficulty expert --count 1 --dry-run --out external-tools/puzzle-lab/exports/expert-test.json
 npm run puzzle-lab:generate -- --cohesion 60 --stability 65 --artistry 45
 npm run puzzle-lab:delete-prefix -- "Codex Art "
 ```
@@ -98,12 +102,22 @@ Use `--difficulty beginner|easy|normal|hard|expert` and `--count N` when creatin
 a requested batch. Without those flags, the generator runs one pass through the
 standard non-Challenge profiles.
 
+Generation utility options:
+
+- `--seed VALUE`: uses deterministic randomness, so the same settings reproduce
+  the same puzzle shapes.
+- `--name-prefix VALUE`: overrides `PUZZLE_LAB_TITLE_PREFIX` for that run.
+- `--publish true|false`: controls `is_published`; default is `true`.
+- `--out PATH`: writes generated rows, metrics, and scores to JSON.
+- `--dry-run-json`: shorthand for dry-run plus JSON output to
+  `external-tools/puzzle-lab/exports/generated-puzzles.json`.
+
 The scripts read Supabase settings from `.env.local`.
 
 Generated rows explicitly set the final beta DB fields:
 
 - `order_index`: appended to the end of the target difficulty.
-- `is_published`: `true`.
+- `is_published`: `true` by default, or `false` with `--publish false`.
 
 Backups are written to `external-tools/puzzle-lab/backups/` and static exports
 are written to `external-tools/puzzle-lab/exports/`. Both folders are ignored by

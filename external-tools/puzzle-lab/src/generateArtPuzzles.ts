@@ -1,3 +1,5 @@
+import fs from "node:fs"
+import path from "node:path"
 import { DEFAULT_GRID_BOUNDS } from "../../../src/core/grid/GridBounds"
 import { gridPosKey, type GridPos } from "../../../src/core/grid/GridPos"
 import {
@@ -52,8 +54,12 @@ type GeneratorOptions = {
   dryRun: boolean
   attemptsMultiplier: number
   thresholds: Partial<PuzzleScoreThresholds>
+  titlePrefix: string
+  publish: boolean
+  seed?: string
   difficulty?: PuzzleDifficulty
   count?: number
+  outPath?: string
 }
 
 type Candidate = {
@@ -63,8 +69,15 @@ type Candidate = {
   signature: string
 }
 
-const titlePrefix = getTitlePrefix()
+type GeneratedPuzzle = {
+  row: SupabasePuzzleRow
+  metrics: PuzzleMetrics
+  scores: PuzzleScore
+}
+
 const options = getGeneratorOptions()
+const titlePrefix = options.titlePrefix
+const rng = options.seed ? createSeededRandom(options.seed) : Math.random
 
 const profiles: Array<Omit<PuzzleSpec, "title">> = [
   {
@@ -216,6 +229,7 @@ async function main() {
   const nextOrderIndexByDifficulty = getNextOrderIndexByDifficulty(existingRows)
   const specs = createSpecs(existingRows)
   const rows: SupabasePuzzleRow[] = []
+  const generatedPuzzles: GeneratedPuzzle[] = []
 
   for (const spec of specs) {
     if (existingTitles.has(spec.title)) {
@@ -237,9 +251,14 @@ async function main() {
       difficulty: spec.difficulty,
       title: spec.title,
       order_index: nextOrderIndexByDifficulty.get(spec.difficulty) ?? 0,
-      is_published: true,
+      is_published: options.publish,
       grid: puzzle.grid,
       placed_shapes: puzzle.placedShapes,
+    })
+    generatedPuzzles.push({
+      row: rows.at(-1)!,
+      metrics: candidate.metrics,
+      scores: candidate.scores,
     })
     nextOrderIndexByDifficulty.set(
       spec.difficulty,
@@ -247,6 +266,10 @@ async function main() {
     )
 
     console.log(formatCandidate(spec.title, candidate))
+  }
+
+  if (options.outPath) {
+    writeGeneratedPuzzleFile(options.outPath, generatedPuzzles)
   }
 
   if (options.dryRun) {
@@ -562,14 +585,14 @@ function sample<T>(items: T[], count: number): T[] {
 }
 
 function randomItem<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)]!
+  return items[Math.floor(rng() * items.length)]!
 }
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items]
 
   for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1))
+    const swapIndex = Math.floor(rng() * (index + 1))
     const current = copy[index]!
 
     copy[index] = copy[swapIndex]!
@@ -590,18 +613,46 @@ function createThresholds(defaults: PuzzleScoreThresholds): PuzzleScoreThreshold
 function getGeneratorOptions(): GeneratorOptions {
   const args = process.argv.slice(2)
   const difficulty = getDifficultyOption(args)
+  const outPath = getStringOption(args, "--out") ??
+    (args.includes("--dry-run-json")
+      ? "external-tools/puzzle-lab/exports/generated-puzzles.json"
+      : undefined)
 
   return {
-    dryRun: args.includes("--dry-run"),
+    dryRun: args.includes("--dry-run") || args.includes("--dry-run-json"),
     attemptsMultiplier: getNumberOption(args, "--attempts-multiplier", 1),
     difficulty,
     count: getPositiveIntegerOption(args, "--count"),
+    titlePrefix: getStringOption(args, "--name-prefix") ?? getTitlePrefix(),
+    publish: getPublishOption(args),
+    seed: getStringOption(args, "--seed"),
+    outPath,
     thresholds: {
       cohesion: getThresholdOption(args, "--cohesion", "PUZZLE_LAB_MIN_COHESION"),
       stability: getThresholdOption(args, "--stability", "PUZZLE_LAB_MIN_STABILITY"),
       artistry: getThresholdOption(args, "--artistry", "PUZZLE_LAB_MIN_ARTISTRY"),
     },
   }
+}
+
+function getPublishOption(args: string[]): boolean {
+  const index = args.indexOf("--publish")
+
+  if (index === -1) {
+    return true
+  }
+
+  const value = args[index + 1]?.toLowerCase()
+
+  if (value === "true") {
+    return true
+  }
+
+  if (value === "false") {
+    return false
+  }
+
+  throw new Error("--publish must be true or false.")
 }
 
 function getDifficultyOption(args: string[]): PuzzleDifficulty | undefined {
@@ -661,6 +712,22 @@ function getNumberOption(args: string[], flagName: string, fallback: number): nu
   return getOptionalNumberOption(args, flagName) ?? fallback
 }
 
+function getStringOption(args: string[], flagName: string): string | undefined {
+  const index = args.indexOf(flagName)
+
+  if (index === -1) {
+    return undefined
+  }
+
+  const value = args[index + 1]?.trim()
+
+  if (!value) {
+    throw new Error(`${flagName} requires a value.`)
+  }
+
+  return normalizeCliText(value)
+}
+
 function getOptionalNumberOption(args: string[], flagName: string): number | undefined {
   const index = args.indexOf(flagName)
 
@@ -717,13 +784,68 @@ function formatThresholds(thresholds: PuzzleScoreThresholds): string {
 function getTitlePrefix(): string {
   const value = process.env.PUZZLE_LAB_TITLE_PREFIX?.trim()
 
-  return value || "Codex Art"
+  return value ? normalizeCliText(value) : "Codex Art"
+}
+
+function normalizeCliText(value: string): string {
+  return value.replace(/\^/g, "")
 }
 
 function createTitle(profile: Omit<PuzzleSpec, "title">, index: number): string {
   const difficultyLabel = formatDifficulty(profile.difficulty)
 
   return `${titlePrefix} ${difficultyLabel} ${profile.label} #${index}`
+}
+
+function writeGeneratedPuzzleFile(
+  outputPath: string,
+  generatedPuzzles: GeneratedPuzzle[],
+) {
+  const resolvedPath = path.resolve(outputPath)
+  const payload = {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    generator: {
+      seed: options.seed ?? null,
+      difficulty: options.difficulty ?? null,
+      count: options.count ?? null,
+      titlePrefix: options.titlePrefix,
+      publish: options.publish,
+      thresholds: options.thresholds,
+      attemptsMultiplier: options.attemptsMultiplier,
+    },
+    summary: {
+      total: generatedPuzzles.length,
+    },
+    puzzles: generatedPuzzles.map((puzzle) => ({
+      row: puzzle.row,
+      metrics: puzzle.metrics,
+      scores: puzzle.scores,
+    })),
+  }
+
+  fs.mkdirSync(path.dirname(resolvedPath), { recursive: true })
+  fs.writeFileSync(resolvedPath, `${JSON.stringify(payload, null, 2)}\n`)
+  console.log(`Wrote generated puzzle JSON: ${resolvedPath}`)
+}
+
+function createSeededRandom(seed: string): () => number {
+  let state = 2166136261
+
+  for (let index = 0; index < seed.length; index += 1) {
+    state ^= seed.charCodeAt(index)
+    state = Math.imul(state, 16777619)
+  }
+
+  return () => {
+    state += 0x6D2B79F5
+    let value = state
+
+    value = Math.imul(value ^ value >>> 15, value | 1)
+    value ^= value + Math.imul(value ^ value >>> 7, value | 61)
+
+    return ((value ^ value >>> 14) >>> 0) / 4294967296
+  }
 }
 
 main().catch((error: unknown) => {
