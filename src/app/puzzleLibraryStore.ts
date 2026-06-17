@@ -52,8 +52,12 @@ type PuzzleOrderUpdate = {
 }
 
 type AdminCredentialProvider = () => string | null
+type AdminCredentialRejectedHandler = () => void
 
-export function createPuzzleLibraryStore(getAdminCredential?: AdminCredentialProvider) {
+export function createPuzzleLibraryStore(
+  getAdminCredential?: AdminCredentialProvider,
+  onAdminCredentialRejected?: AdminCredentialRejectedHandler,
+) {
   const supabaseUrl = getEnvString("VITE_SUPABASE_URL")
   const supabaseKey = getEnvString("VITE_SUPABASE_ANON_KEY")
 
@@ -270,6 +274,10 @@ export function createPuzzleLibraryStore(getAdminCredential?: AdminCredentialPro
     })
 
     if (!result.ok) {
+      if (isAdminCredentialError(result)) {
+        onAdminCredentialRejected?.()
+      }
+
       return result
     }
 
@@ -282,12 +290,13 @@ export function createPuzzleLibraryStore(getAdminCredential?: AdminCredentialPro
   async function request<T>(
     url: string,
     options: RequestInit,
-  ): Promise<StoreResult & { data: T }> {
+  ): Promise<StoreResult & { data: T, status: number }> {
     if (!supabaseKey) {
       return {
         ok: false,
         message: "Supabase key is not configured.",
         data: undefined as T,
+        status: 0,
       }
     }
 
@@ -307,6 +316,7 @@ export function createPuzzleLibraryStore(getAdminCredential?: AdminCredentialPro
           ok: false,
           message: await getResponseErrorMessage(response),
           data: undefined as T,
+          status: response.status,
         }
       }
 
@@ -317,6 +327,7 @@ export function createPuzzleLibraryStore(getAdminCredential?: AdminCredentialPro
           ok: true,
           message: "DB sync complete.",
           data: undefined as T,
+          status: response.status,
         }
       }
 
@@ -324,12 +335,14 @@ export function createPuzzleLibraryStore(getAdminCredential?: AdminCredentialPro
         ok: true,
         message: "DB sync complete.",
         data: JSON.parse(body) as T,
+        status: response.status,
       }
     } catch (error) {
       return {
         ok: false,
         message: error instanceof Error ? error.message : "DB sync failed.",
         data: undefined as T,
+        status: 0,
       }
     }
   }
@@ -341,6 +354,11 @@ export function createPuzzleLibraryStore(getAdminCredential?: AdminCredentialPro
   function getFunctionUrl(): string {
     return `${supabaseUrl!.replace(/\/$/, "")}/functions/v1/${SUPABASE_ADMIN_FUNCTION}`
   }
+}
+
+function isAdminCredentialError(result: StoreResult & { status?: number }): boolean {
+  return result.status === 401 ||
+    result.message.toLowerCase().includes("admin password")
 }
 
 export function createEmptyPuzzleLibrary(): PuzzleLibrary {

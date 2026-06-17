@@ -90,7 +90,10 @@ type AppSettings = {
   seVolume: number
 }
 
-const puzzleLibraryStore = createPuzzleLibraryStore(() => adminUnlockGate.getCredential())
+const puzzleLibraryStore = createPuzzleLibraryStore(
+  () => adminUnlockGate.getCredential(),
+  resetAdminUnlock,
+)
 let appSettings = loadAppSettings()
 let adminUnlocked = adminUnlockGate.isUnlocked()
 let activeShapeGroup: THREE.Group | null = null
@@ -972,6 +975,11 @@ function createAdminUnlockGate() {
       return window.sessionStorage.getItem(credentialKey)
     },
 
+    clear() {
+      window.sessionStorage.removeItem(sessionKey)
+      window.sessionStorage.removeItem(credentialKey)
+    },
+
     isUnlocked(): boolean {
       const credential = window.sessionStorage.getItem(credentialKey)
 
@@ -1012,6 +1020,12 @@ function createAdminUnlockGate() {
       return { ok: true }
     },
   }
+}
+
+function resetAdminUnlock() {
+  adminUnlockGate.clear()
+  adminUnlocked = false
+  updateAdminUnlockedControl?.(false)
 }
 
 async function requestAdminUnlock(): Promise<boolean> {
