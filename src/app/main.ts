@@ -973,22 +973,20 @@ function createAdminUnlockGate() {
     },
 
     isUnlocked(): boolean {
+      const credential = window.sessionStorage.getItem(credentialKey)
+
       return (
         window.sessionStorage.getItem(sessionKey) === "1" &&
-        Boolean(window.sessionStorage.getItem(credentialKey))
+        Boolean(credential) &&
+        credential !== "local-dev-unlocked"
       )
     },
 
     async ensureUnlocked(): Promise<{ ok: boolean, message?: string }> {
-      if (!configuredHash && !configuredPassword) {
-        window.sessionStorage.setItem(sessionKey, "1")
-        window.sessionStorage.setItem(credentialKey, "local-dev-unlocked")
-        return { ok: true }
-      }
-
       if (
         window.sessionStorage.getItem(sessionKey) === "1" &&
-        window.sessionStorage.getItem(credentialKey)
+        window.sessionStorage.getItem(credentialKey) &&
+        window.sessionStorage.getItem(credentialKey) !== "local-dev-unlocked"
       ) {
         return { ok: true }
       }
@@ -999,9 +997,11 @@ function createAdminUnlockGate() {
         return { ok: false, message: "Admin unlock cancelled." }
       }
 
-      const isAccepted = configuredHash
-        ? await verifyPasswordHash(password, configuredHash)
-        : password === configuredPassword
+      const isAccepted = !configuredHash && !configuredPassword
+        ? true
+        : configuredHash
+          ? await verifyPasswordHash(password, configuredHash)
+          : password === configuredPassword
 
       if (!isAccepted) {
         return { ok: false, message: "Admin password is incorrect." }
