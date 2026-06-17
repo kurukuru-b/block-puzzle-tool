@@ -7,6 +7,7 @@ import {
 
 const PUZZLE_LIBRARY_STORAGE_KEY = "block-puzzle-tool:puzzle-library"
 const SUPABASE_TABLE = import.meta.env.VITE_SUPABASE_PUZZLE_TABLE ?? "puzzles"
+const SUPABASE_ADMIN_FUNCTION = import.meta.env.VITE_SUPABASE_ADMIN_FUNCTION ?? "manage-puzzles"
 
 export type StoredPuzzle = PuzzleExport & {
   id: string
@@ -50,7 +51,9 @@ type PuzzleOrderUpdate = {
   orderIndex: number
 }
 
-export function createPuzzleLibraryStore() {
+type AdminCredentialProvider = () => string | null
+
+export function createPuzzleLibraryStore(getAdminCredential?: AdminCredentialProvider) {
   const supabaseUrl = getEnvString("VITE_SUPABASE_URL")
   const supabaseKey = getEnvString("VITE_SUPABASE_ANON_KEY")
 
@@ -166,12 +169,8 @@ export function createPuzzleLibraryStore() {
       }
     }
 
-    return request<void>(`${getRestUrl()}?on_conflict=id`, {
-      method: "POST",
-      headers: {
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      },
-      body: JSON.stringify(toSupabaseBody(puzzle)),
+    return requestAdmin("upsert", {
+      puzzle: toSupabaseBody(puzzle),
     })
   }
 
@@ -183,15 +182,9 @@ export function createPuzzleLibraryStore() {
       }
     }
 
-    return request<void>(`${getRestUrl()}?id=eq.${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      headers: {
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify({
-        title,
-        updated_at: new Date().toISOString(),
-      }),
+    return requestAdmin("rename", {
+      id,
+      title,
     })
   }
 
@@ -208,18 +201,11 @@ export function createPuzzleLibraryStore() {
       }
     }
 
-    return request<void>(`${getRestUrl()}?id=eq.${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      headers: {
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify({
-        difficulty,
-        title,
-        order_index: orderIndex,
-        is_published: true,
-        updated_at: new Date().toISOString(),
-      }),
+    return requestAdmin("move", {
+      id,
+      difficulty,
+      title,
+      orderIndex,
     })
   }
 
@@ -233,28 +219,9 @@ export function createPuzzleLibraryStore() {
       }
     }
 
-    const results = await Promise.all(updates.map((update) => (
-      request<void>(`${getRestUrl()}?id=eq.${encodeURIComponent(update.id)}`, {
-        method: "PATCH",
-        headers: {
-          Prefer: "return=minimal",
-        },
-        body: JSON.stringify({
-          order_index: update.orderIndex,
-          updated_at: new Date().toISOString(),
-        }),
-      })
-    )))
-    const failed = results.find((result) => !result.ok)
-
-    if (failed) {
-      return failed
-    }
-
-    return {
-      ok: true,
-      message: "Reordered in DB.",
-    }
+    return requestAdmin("update-order", {
+      updates,
+    })
   }
 
   async function deletePuzzle(id: string): Promise<StoreResult> {
@@ -265,12 +232,51 @@ export function createPuzzleLibraryStore() {
       }
     }
 
-    return request<void>(`${getRestUrl()}?id=eq.${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      headers: {
-        Prefer: "return=minimal",
-      },
+    return requestAdmin("delete", {
+      id,
     })
+  }
+
+  async function requestAdmin(
+    action: string,
+    payload: Record<string, unknown>,
+  ): Promise<StoreResult> {
+    if (!supabaseKey) {
+      return {
+        ok: false,
+        message: "Supabase key is not configured.",
+      }
+    }
+
+    const adminCredential = getAdminCredential?.()
+
+    if (!adminCredential) {
+      return {
+        ok: false,
+        message: "Admin password is not unlocked.",
+      }
+    }
+
+    const result = await request<{ message?: string }>(getFunctionUrl(), {
+      method: "POST",
+      headers: {
+        "x-admin-password": adminCredential,
+      },
+      body: JSON.stringify({
+        action,
+        table: SUPABASE_TABLE,
+        ...payload,
+      }),
+    })
+
+    if (!result.ok) {
+      return result
+    }
+
+    return {
+      ok: true,
+      message: result.data?.message ?? "DB sync complete.",
+    }
   }
 
   async function request<T>(
@@ -330,6 +336,10 @@ export function createPuzzleLibraryStore() {
 
   function getRestUrl(): string {
     return `${supabaseUrl!.replace(/\/$/, "")}/rest/v1/${SUPABASE_TABLE}`
+  }
+
+  function getFunctionUrl(): string {
+    return `${supabaseUrl!.replace(/\/$/, "")}/functions/v1/${SUPABASE_ADMIN_FUNCTION}`
   }
 }
 

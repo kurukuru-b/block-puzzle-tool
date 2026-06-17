@@ -90,7 +90,7 @@ type AppSettings = {
   seVolume: number
 }
 
-const puzzleLibraryStore = createPuzzleLibraryStore()
+const puzzleLibraryStore = createPuzzleLibraryStore(() => adminUnlockGate.getCredential())
 let appSettings = loadAppSettings()
 let adminUnlocked = adminUnlockGate.isUnlocked()
 let activeShapeGroup: THREE.Group | null = null
@@ -963,21 +963,33 @@ function showTitleDialog({
 
 function createAdminUnlockGate() {
   const sessionKey = "tricube:v2:admin-unlocked"
+  const credentialKey = "tricube:v2:admin-credential"
   const configuredHash = import.meta.env.VITE_REGISTER_PASSWORD_HASH?.trim()
   const configuredPassword = import.meta.env.VITE_REGISTER_PASSWORD?.trim()
 
   return {
+    getCredential(): string | null {
+      return window.sessionStorage.getItem(credentialKey)
+    },
+
     isUnlocked(): boolean {
-      return window.sessionStorage.getItem(sessionKey) === "1"
+      return (
+        window.sessionStorage.getItem(sessionKey) === "1" &&
+        Boolean(window.sessionStorage.getItem(credentialKey))
+      )
     },
 
     async ensureUnlocked(): Promise<{ ok: boolean, message?: string }> {
       if (!configuredHash && !configuredPassword) {
         window.sessionStorage.setItem(sessionKey, "1")
+        window.sessionStorage.setItem(credentialKey, "local-dev-unlocked")
         return { ok: true }
       }
 
-      if (window.sessionStorage.getItem(sessionKey) === "1") {
+      if (
+        window.sessionStorage.getItem(sessionKey) === "1" &&
+        window.sessionStorage.getItem(credentialKey)
+      ) {
         return { ok: true }
       }
 
@@ -996,6 +1008,7 @@ function createAdminUnlockGate() {
       }
 
       window.sessionStorage.setItem(sessionKey, "1")
+      window.sessionStorage.setItem(credentialKey, password)
       return { ok: true }
     },
   }

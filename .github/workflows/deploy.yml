@@ -41,6 +41,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_SUPABASE_PUZZLE_TABLE: ${{ vars.VITE_SUPABASE_PUZZLE_TABLE || 'puzzles' }}
+          VITE_SUPABASE_ADMIN_FUNCTION: ${{ vars.VITE_SUPABASE_ADMIN_FUNCTION || 'manage-puzzles' }}
           VITE_APP_PASSWORD: ${{ vars.VITE_APP_PASSWORD }}
 
       - name: Checkout beta
@@ -64,6 +65,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_SUPABASE_PUZZLE_TABLE: ${{ vars.VITE_SUPABASE_PUZZLE_TABLE || 'puzzles' }}
+          VITE_SUPABASE_ADMIN_FUNCTION: ${{ vars.VITE_SUPABASE_ADMIN_FUNCTION || 'manage-puzzles' }}
           VITE_APP_PASSWORD: ${{ vars.VITE_APP_PASSWORD }}
 
       - name: Checkout v2
@@ -87,6 +89,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_SUPABASE_PUZZLE_TABLE: ${{ vars.VITE_SUPABASE_PUZZLE_TABLE || 'puzzles' }}
+          VITE_SUPABASE_ADMIN_FUNCTION: ${{ vars.VITE_SUPABASE_ADMIN_FUNCTION || 'manage-puzzles' }}
           VITE_APP_PASSWORD: ${{ vars.VITE_APP_PASSWORD }}
           VITE_REGISTER_PASSWORD_HASH: ${{ vars.VITE_REGISTER_PASSWORD_HASH }}
           VITE_REGISTER_PASSWORD: ${{ vars.VITE_REGISTER_PASSWORD }}
