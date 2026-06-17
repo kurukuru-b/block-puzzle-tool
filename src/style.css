@@ -131,9 +131,18 @@ button {
   background: #ffffff;
 }
 
-.title-credit-button {
+.title-version-label {
   position: absolute;
   left: 22px;
+  bottom: 24px;
+  color: #4b5563;
+  font: 850 12px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: 0;
+}
+
+.title-credit-button {
+  position: absolute;
+  right: 22px;
   bottom: 22px;
   height: 38px;
   padding: 0 14px;

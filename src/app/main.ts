@@ -692,6 +692,11 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   playButton.textContent = "Play"
   actions.appendChild(playButton)
 
+  const versionLabel = document.createElement("span")
+  versionLabel.className = "title-version-label"
+  versionLabel.textContent = `ver. ${APP_VERSION}`
+  element.appendChild(versionLabel)
+
   const creditButton = document.createElement("button")
   creditButton.type = "button"
   creditButton.className = "title-credit-button"
