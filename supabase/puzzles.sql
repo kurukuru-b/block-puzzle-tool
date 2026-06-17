@@ -2,6 +2,8 @@ create table if not exists public.puzzles (
   id text primary key,
   difficulty text not null check (difficulty in ('beginner', 'easy', 'normal', 'hard', 'expert', 'challenge')),
   title text not null,
+  order_index integer not null default 0,
+  is_published boolean not null default true,
   grid jsonb not null,
   placed_shapes jsonb not null,
   created_at timestamptz not null default now(),
@@ -10,33 +12,19 @@ create table if not exists public.puzzles (
 
 alter table public.puzzles enable row level security;
 
-grant select, insert, update, delete on table public.puzzles to anon;
+grant select on table public.puzzles to anon;
 
 drop policy if exists "Public puzzle read" on public.puzzles;
-create policy "Public puzzle read"
+drop policy if exists "puzzles are readable" on public.puzzles;
+create policy "puzzles are readable"
   on public.puzzles
   for select
   to anon
-  using (true);
+  using (is_published = true);
 
 drop policy if exists "Public puzzle insert" on public.puzzles;
-create policy "Public puzzle insert"
-  on public.puzzles
-  for insert
-  to anon
-  with check (true);
-
 drop policy if exists "Public puzzle update" on public.puzzles;
-create policy "Public puzzle update"
-  on public.puzzles
-  for update
-  to anon
-  using (true)
-  with check (true);
-
 drop policy if exists "Public puzzle delete" on public.puzzles;
-create policy "Public puzzle delete"
-  on public.puzzles
-  for delete
-  to anon
-  using (true);
+
+create index if not exists puzzles_published_difficulty_order_idx
+on public.puzzles (is_published, difficulty, order_index);

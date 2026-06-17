@@ -4,10 +4,8 @@ This app can sync registered puzzles to Supabase. If the environment variables a
 
 1. Create a Supabase project.
 2. Open the Supabase SQL editor and run `supabase/puzzles.sql`.
-3. Run `supabase/puzzles-final-schema.sql` to apply the beta final columns
-   and six difficulty ids.
-4. Copy `.env.example` to `.env.local`.
-5. Set these values:
+3. Copy `.env.example` to `.env.local`.
+4. Set these values:
 
 ```env
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
@@ -16,7 +14,7 @@ VITE_SUPABASE_PUZZLE_TABLE=puzzles
 VITE_SUPABASE_ADMIN_FUNCTION=manage-puzzles
 ```
 
-6. Restart the Vite dev server.
+5. Restart the Vite dev server.
 
 ## GitHub Pages
 
@@ -47,9 +45,10 @@ The recommended v2 setup is:
 1. Keep `select` available to the browser key.
 2. Remove public `insert`, `update`, and `delete` policies from `public.puzzles`.
 3. Deploy `supabase/functions/manage-puzzles`.
-4. Store the admin password and service role key as Edge Function secrets.
+4. Store the admin password hash as an Edge Function secret.
 
-Run this SQL after confirming the table already has the final schema:
+`supabase/puzzles.sql` already creates this final read-only setup. If the table
+was created during alpha/beta, run this cleanup SQL:
 
 ```sql
 alter table public.puzzles enable row level security;
@@ -74,12 +73,16 @@ Set these Edge Function secrets in Supabase:
 
 ```env
 ADMIN_PASSWORD_HASH=sha256-hex-admin-password
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 `ADMIN_PASSWORD` is also supported for local testing, but prefer
-`ADMIN_PASSWORD_HASH` in production. The service role key must never be exposed
-to the Vite app or GitHub Pages variables.
+`ADMIN_PASSWORD_HASH` in production.
+
+Hosted Supabase Edge Functions receive the default project values such as
+`SUPABASE_URL` and `SUPABASE_SECRET_KEYS`. The function uses
+`SUPABASE_SECRET_KEYS` for DB writes, with legacy `SUPABASE_SERVICE_ROLE_KEY`
+support kept only for older projects. Secret keys must never be exposed to the
+Vite app or GitHub Pages variables.
 
 Deploy the function with:
 
@@ -87,9 +90,9 @@ Deploy the function with:
 supabase functions deploy manage-puzzles
 ```
 
-The app's visible admin lock uses `VITE_REGISTER_PASSWORD_HASH` for the browser
-prompt. Use the same actual password for the Edge Function's
-`ADMIN_PASSWORD_HASH`.
+The browser prompt can optionally use `VITE_REGISTER_PASSWORD_HASH` as a quick
+front-end pre-check. The Edge Function's `ADMIN_PASSWORD_HASH` is the
+authoritative check.
 
 ## Beta Final Schema
 
@@ -105,7 +108,8 @@ It also expects these final management columns:
 order_index, is_published
 ```
 
-If the table was created during alpha, run:
+If the table was created during alpha and you do not want to rerun the new
+`supabase/puzzles.sql`, run:
 
 ```sql
 -- Full version is in supabase/puzzles-final-schema.sql
