@@ -72,6 +72,7 @@ const selectedShapeActions = createSelectedShapeActions()
 const titleScreen = createTitleScreen({
   onEdit: enterEditMode,
 })
+const registerPasswordGate = createRegisterPasswordGate()
 
 app.appendChild(selectedShapeActions.element)
 app.appendChild(titleScreen.element)
@@ -83,8 +84,14 @@ type PlacedShapeRecord = PlacedShape & {
 
 type PlacedShapeSnapshot = PlacedShape[]
 type ViewerHintCellResult = { ok: boolean, message: string, color?: number }
+type AppSettings = {
+  language: "en" | "ja"
+  bgmVolume: number
+  seVolume: number
+}
 
 const puzzleLibraryStore = createPuzzleLibraryStore()
+let appSettings = loadAppSettings()
 let activeShapeGroup: THREE.Group | null = null
 let appMode: AppMode = "editor"
 let viewerDifficulty: PuzzleDifficulty = "easy"
@@ -654,6 +661,7 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   settingsButton.className = "title-icon-button"
   settingsButton.setAttribute("aria-label", "Settings")
   settingsButton.textContent = "⚙"
+  settingsButton.addEventListener("click", showSettingsDialog)
   element.appendChild(settingsButton)
 
   const content = document.createElement("div")
@@ -686,6 +694,17 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   creditButton.type = "button"
   creditButton.className = "title-credit-button"
   creditButton.textContent = "Credit"
+  creditButton.addEventListener("click", () => {
+    showTitleDialog({
+      title: "Credits",
+      body: [
+        "TRI²CUBE App Ver2",
+        "Planning / Puzzle Design: TRI²CUBE project",
+        "Development Support: Codex",
+        "Built with TypeScript, Three.js, and Vite.",
+      ],
+    })
+  })
   element.appendChild(creditButton)
 
   return {
@@ -693,13 +712,360 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
     hide() {
       element.hidden = true
     },
+    show() {
+      element.hidden = false
+    },
   }
+}
+
+function loadAppSettings(): AppSettings {
+  const rawValue = window.localStorage.getItem("tricube:v2:settings")
+
+  if (!rawValue) {
+    return {
+      language: "en",
+      bgmVolume: 80,
+      seVolume: 80,
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<AppSettings>
+
+    return {
+      language: parsed.language === "ja" ? "ja" : "en",
+      bgmVolume: clampVolume(parsed.bgmVolume),
+      seVolume: clampVolume(parsed.seVolume),
+    }
+  } catch {
+    return {
+      language: "en",
+      bgmVolume: 80,
+      seVolume: 80,
+    }
+  }
+}
+
+function saveAppSettings(settings: AppSettings) {
+  appSettings = settings
+  window.localStorage.setItem("tricube:v2:settings", JSON.stringify(settings))
+}
+
+function clampVolume(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.min(100, Math.round(value)))
+    : 80
+}
+
+function showSettingsDialog() {
+  const backdrop = document.createElement("div")
+  backdrop.className = "title-dialog-backdrop"
+
+  const dialog = document.createElement("section")
+  dialog.className = "title-dialog settings-dialog"
+  dialog.setAttribute("role", "dialog")
+  dialog.setAttribute("aria-modal", "true")
+  dialog.setAttribute("aria-label", "Settings")
+  backdrop.appendChild(dialog)
+
+  const heading = document.createElement("h2")
+  heading.textContent = "Settings"
+  dialog.appendChild(heading)
+
+  const body = document.createElement("div")
+  body.className = "settings-dialog-body"
+  dialog.appendChild(body)
+
+  const languageSelect = document.createElement("select")
+  languageSelect.value = appSettings.language
+  appendSettingsField(body, "Language", languageSelect)
+
+  for (const [value, label] of [
+    ["en", "English"],
+    ["ja", "日本語"],
+  ] as const) {
+    const option = document.createElement("option")
+    option.value = value
+    option.textContent = label
+    languageSelect.appendChild(option)
+  }
+
+  const bgmInput = document.createElement("input")
+  bgmInput.type = "range"
+  bgmInput.min = "0"
+  bgmInput.max = "100"
+  bgmInput.value = String(appSettings.bgmVolume)
+  const bgmValue = appendSettingsField(body, "BGM Volume", bgmInput)
+
+  const seInput = document.createElement("input")
+  seInput.type = "range"
+  seInput.min = "0"
+  seInput.max = "100"
+  seInput.value = String(appSettings.seVolume)
+  const seValue = appendSettingsField(body, "SE Volume", seInput)
+
+  syncSettingValueLabels()
+
+  languageSelect.addEventListener("change", saveFromControls)
+  bgmInput.addEventListener("input", saveFromControls)
+  seInput.addEventListener("input", saveFromControls)
+
+  const note = document.createElement("p")
+  note.className = "settings-note"
+  note.textContent = "Language and audio values are stored now; full app-wide translation and audio playback will connect as Play mode is built."
+  body.appendChild(note)
+
+  const closeButton = document.createElement("button")
+  closeButton.type = "button"
+  closeButton.className = "title-dialog-close"
+  closeButton.textContent = "Close"
+  closeButton.addEventListener("click", close)
+  dialog.appendChild(closeButton)
+
+  backdrop.addEventListener("click", (event) => {
+    if (event.target === backdrop) {
+      close()
+    }
+  })
+
+  document.addEventListener("keydown", onKeyDown)
+  app!.appendChild(backdrop)
+  languageSelect.focus()
+
+  function saveFromControls() {
+    saveAppSettings({
+      language: languageSelect.value === "ja" ? "ja" : "en",
+      bgmVolume: Number(bgmInput.value),
+      seVolume: Number(seInput.value),
+    })
+    syncSettingValueLabels()
+  }
+
+  function syncSettingValueLabels() {
+    bgmValue.textContent = `${bgmInput.value}%`
+    seValue.textContent = `${seInput.value}%`
+  }
+
+  function close() {
+    document.removeEventListener("keydown", onKeyDown)
+    backdrop.remove()
+  }
+
+  function onKeyDown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      close()
+    }
+  }
+}
+
+function appendSettingsField(
+  parent: HTMLElement,
+  labelText: string,
+  control: HTMLElement,
+): HTMLElement {
+  const row = document.createElement("label")
+  row.className = "settings-row"
+  parent.appendChild(row)
+
+  const label = document.createElement("span")
+  label.textContent = labelText
+  row.appendChild(label)
+
+  row.appendChild(control)
+
+  const value = document.createElement("span")
+  value.className = "settings-value"
+  row.appendChild(value)
+
+  return value
 }
 
 function enterEditMode() {
   titleScreen.hide()
   shapeSelector.element.hidden = false
   setAppMode("editor")
+}
+
+function returnToTitle() {
+  clearSelection()
+  shapeSelector.element.hidden = true
+  titleScreen.show()
+}
+
+function showTitleDialog({
+  title,
+  body,
+}: {
+  title: string
+  body: string[]
+}) {
+  const backdrop = document.createElement("div")
+  backdrop.className = "title-dialog-backdrop"
+
+  const dialog = document.createElement("section")
+  dialog.className = "title-dialog"
+  dialog.setAttribute("role", "dialog")
+  dialog.setAttribute("aria-modal", "true")
+  dialog.setAttribute("aria-label", title)
+  backdrop.appendChild(dialog)
+
+  const heading = document.createElement("h2")
+  heading.textContent = title
+  dialog.appendChild(heading)
+
+  const content = document.createElement("div")
+  content.className = "title-dialog-body"
+  dialog.appendChild(content)
+
+  for (const line of body) {
+    const item = document.createElement("p")
+    item.textContent = line
+    content.appendChild(item)
+  }
+
+  const closeButton = document.createElement("button")
+  closeButton.type = "button"
+  closeButton.className = "title-dialog-close"
+  closeButton.textContent = "Close"
+  closeButton.addEventListener("click", close)
+  dialog.appendChild(closeButton)
+
+  backdrop.addEventListener("click", (event) => {
+    if (event.target === backdrop) {
+      close()
+    }
+  })
+
+  document.addEventListener("keydown", onKeyDown)
+  app!.appendChild(backdrop)
+  closeButton.focus()
+
+  function close() {
+    document.removeEventListener("keydown", onKeyDown)
+    backdrop.remove()
+  }
+
+  function onKeyDown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      close()
+    }
+  }
+}
+
+function createRegisterPasswordGate() {
+  const sessionKey = "tricube:v2:register-unlocked"
+  const configuredHash = import.meta.env.VITE_REGISTER_PASSWORD_HASH?.trim()
+  const configuredPassword = import.meta.env.VITE_REGISTER_PASSWORD?.trim()
+
+  return {
+    async ensureUnlocked(): Promise<{ ok: boolean, message?: string }> {
+      if (!configuredHash && !configuredPassword) {
+        return { ok: true }
+      }
+
+      if (window.sessionStorage.getItem(sessionKey) === "1") {
+        return { ok: true }
+      }
+
+      const password = await requestRegisterPassword()
+
+      if (password === null) {
+        return { ok: false, message: "Register cancelled." }
+      }
+
+      const isAccepted = configuredHash
+        ? await verifyPasswordHash(password, configuredHash)
+        : password === configuredPassword
+
+      if (!isAccepted) {
+        return { ok: false, message: "Register password is incorrect." }
+      }
+
+      window.sessionStorage.setItem(sessionKey, "1")
+      return { ok: true }
+    },
+  }
+}
+
+function requestRegisterPassword(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement("div")
+    backdrop.className = "register-password-backdrop"
+
+    const form = document.createElement("form")
+    form.className = "register-password-dialog"
+    backdrop.appendChild(form)
+
+    const title = document.createElement("h2")
+    title.textContent = "Register Password"
+    form.appendChild(title)
+
+    const description = document.createElement("p")
+    description.textContent = "Enter the register password to enable puzzle registration."
+    form.appendChild(description)
+
+    const input = document.createElement("input")
+    input.type = "password"
+    input.autocomplete = "current-password"
+    input.placeholder = "Password"
+    input.setAttribute("aria-label", "Register password")
+    form.appendChild(input)
+
+    const actions = document.createElement("div")
+    actions.className = "register-password-actions"
+    form.appendChild(actions)
+
+    const cancelButton = document.createElement("button")
+    cancelButton.type = "button"
+    cancelButton.textContent = "Cancel"
+    cancelButton.addEventListener("click", () => finish(null))
+    actions.appendChild(cancelButton)
+
+    const submitButton = document.createElement("button")
+    submitButton.type = "submit"
+    submitButton.textContent = "Unlock"
+    actions.appendChild(submitButton)
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault()
+      finish(input.value)
+    })
+
+    backdrop.addEventListener("click", (event) => {
+      if (event.target === backdrop) {
+        finish(null)
+      }
+    })
+
+    document.addEventListener("keydown", onKeyDown)
+    app!.appendChild(backdrop)
+    input.focus()
+
+    function finish(value: string | null) {
+      document.removeEventListener("keydown", onKeyDown)
+      backdrop.remove()
+      resolve(value)
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        finish(null)
+      }
+    }
+  })
+}
+
+async function verifyPasswordHash(password: string, expectedHash: string): Promise<boolean> {
+  const normalizedExpectedHash = expectedHash.toLowerCase()
+  const digest = await window.crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(password),
+  )
+  const actualHash = [...new Uint8Array(digest)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("")
+
+  return actualHash === normalizedExpectedHash
 }
 
 function validateEditorBoard(): { ok: boolean, message: string } {
@@ -795,6 +1161,15 @@ async function registerPuzzle(
   requestedTitle: string,
 ): Promise<{ ok: boolean, message: string }> {
   try {
+    const unlockResult = await registerPasswordGate.ensureUnlocked()
+
+    if (!unlockResult.ok) {
+      return {
+        ok: false,
+        message: unlockResult.message ?? "Register is locked.",
+      }
+    }
+
     if (placedShapes.length === 0) {
       throw new Error("登録できる配置がありません。")
     }
@@ -2265,6 +2640,7 @@ const shapeSelector = createShapeSelector({
   onRedo: redoEditorAction,
   onDeletePlacedShape: deleteSelectedPlacedShape,
   onEditPlacedShape: editSelectedPlacedShape,
+  onReturnToTitle: returnToTitle,
   onExportPuzzle: exportPuzzle,
   onImportPuzzle: importPuzzle,
   onRegisterPuzzle: registerPuzzle,

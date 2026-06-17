@@ -118,6 +118,7 @@ type CreateShapeSelectorParams = {
   onRedo: () => void
   onDeletePlacedShape: () => void
   onEditPlacedShape: () => void
+  onReturnToTitle: () => void
   onExportPuzzle: () => string
   onImportPuzzle: (source: string) => ImportPuzzleResult
   onRegisterPuzzle: (difficulty: PuzzleDifficulty, title: string) => MaybePromise<ImportPuzzleResult>
@@ -185,6 +186,7 @@ export function createShapeSelector({
   onRedo,
   onDeletePlacedShape,
   onEditPlacedShape,
+  onReturnToTitle,
   onExportPuzzle,
   onImportPuzzle,
   onRegisterPuzzle,
@@ -976,6 +978,13 @@ export function createShapeSelector({
     modeControls.appendChild(button)
     modeButtons.set(mode, button)
   }
+
+  const titleButton = document.createElement("button")
+  titleButton.type = "button"
+  titleButton.className = "secondary-action-button mode-button title-return-button"
+  titleButton.textContent = "Title"
+  titleButton.addEventListener("click", onReturnToTitle)
+  modeControls.appendChild(titleButton)
 
   const visualSettings = document.createElement("div")
   visualSettings.className = "visual-settings"
