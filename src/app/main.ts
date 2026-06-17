@@ -698,10 +698,12 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
     showTitleDialog({
       title: "Credits",
       body: [
-        "TRI²CUBE App Ver2",
-        "Planning / Puzzle Design: TRI²CUBE project",
-        "Development Support: Codex",
-        "Built with TypeScript, Three.js, and Vite.",
+        "制作：チームTRI²CUBE",
+        "パズル原案：そーだ（チームTRI²CUBE）",
+        "問題制作：チームTRI²CUBE",
+        "アプリ開発：そーだ（チームTRI²CUBE）",
+        "開発補助：Codex",
+        "使用ツール：TypeScript, Three.js, Vite, Supabase",
       ],
     })
   })

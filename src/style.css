@@ -1332,9 +1332,15 @@ button {
 }
 
 .data-panel.export-controls {
+  min-height: calc(100vh - 32px);
   margin-top: 0;
   padding-top: 14px;
   border-top: 1px solid rgba(105, 114, 130, 0.28);
+}
+
+.title-return-button {
+  width: 100%;
+  margin-top: auto;
 }
 
 .visual-settings {

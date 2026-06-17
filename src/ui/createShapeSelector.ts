@@ -979,13 +979,6 @@ export function createShapeSelector({
     modeButtons.set(mode, button)
   }
 
-  const titleButton = document.createElement("button")
-  titleButton.type = "button"
-  titleButton.className = "secondary-action-button mode-button title-return-button"
-  titleButton.textContent = "Title"
-  titleButton.addEventListener("click", onReturnToTitle)
-  modeControls.appendChild(titleButton)
-
   const visualSettings = document.createElement("div")
   visualSettings.className = "visual-settings"
   dataControls.appendChild(visualSettings)
@@ -1085,6 +1078,13 @@ export function createShapeSelector({
   const importStatus = document.createElement("span")
   importStatus.className = "import-status"
   dataTools.appendChild(importStatus)
+
+  const titleButton = document.createElement("button")
+  titleButton.type = "button"
+  titleButton.className = "secondary-action-button title-return-button"
+  titleButton.textContent = "Title"
+  titleButton.addEventListener("click", onReturnToTitle)
+  dataControls.appendChild(titleButton)
 
   dataToolsToggleButton.addEventListener("click", () => {
     const isHidden = dataTools.classList.toggle("is-hidden")
