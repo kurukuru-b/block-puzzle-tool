@@ -77,6 +77,8 @@ type CreateShapeSelectorParams = {
   initialCoreMarkerEnabled: boolean
   initialGridVisible: boolean
   initialFloorVisible: boolean
+  initialAdminUnlocked: boolean
+  onRequestAdminUnlock: () => Promise<boolean>
   onModeChange: (mode: AppMode) => void
   onToggleShapeColorMode: () => void
   onToggleCellEdges: () => void
@@ -133,6 +135,7 @@ type ShapeSelector = {
   setPlacedShapes: (shapes: PlacedShapeSummary[]) => void
   setSelectedPlacedShape: (id: string | null) => void
   setShapeAvailability: (shapeId: string, isAvailable: boolean) => void
+  setAdminUnlocked: (isUnlocked: boolean) => void
 }
 
 export function createShapeSelector({
@@ -147,6 +150,8 @@ export function createShapeSelector({
   initialCoreMarkerEnabled,
   initialGridVisible,
   initialFloorVisible,
+  initialAdminUnlocked,
+  onRequestAdminUnlock,
   onModeChange,
   onToggleShapeColorMode,
   onToggleCellEdges,
@@ -323,6 +328,8 @@ export function createShapeSelector({
   let coreMarkerEnabled = initialCoreMarkerEnabled
   let gridVisible = initialGridVisible
   let floorVisible = initialFloorVisible
+  let adminUnlocked = initialAdminUnlocked
+  const adminLockableControls: HTMLElement[] = []
   let activeHintMenuKey: string | null = null
   let nextHintEntryId = 1
   let hintEntries: HintEntry[] = []
@@ -738,11 +745,16 @@ export function createShapeSelector({
   renameProblemButton.textContent = "Rename"
   renameProblemButton.addEventListener("click", async () => {
     resetDeleteConfirmation()
+    if (!await ensureAdminUnlocked(problemStatus)) {
+      return
+    }
+
     const result = await onRenameProblem(problemTitleInput.value)
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
+  addAdminLockableControl(renameProblemButton)
   moveManagementRow.appendChild(renameProblemButton)
 
   const moveDifficultySelect = document.createElement("select")
@@ -767,11 +779,16 @@ export function createShapeSelector({
   moveProblemButton.textContent = "Move"
   moveProblemButton.addEventListener("click", async () => {
     resetDeleteConfirmation()
+    if (!await ensureAdminUnlocked(problemStatus)) {
+      return
+    }
+
     const result = await onMoveProblemDifficulty(moveDifficultySelect.value as PuzzleDifficulty)
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
+  addAdminLockableControl(moveProblemButton)
   moveManagementRow.appendChild(moveProblemButton)
 
   const reorderManagementRow = document.createElement("div")
@@ -784,11 +801,16 @@ export function createShapeSelector({
   reorderUpButton.textContent = "Up"
   reorderUpButton.addEventListener("click", async () => {
     resetDeleteConfirmation()
+    if (!await ensureAdminUnlocked(problemStatus)) {
+      return
+    }
+
     const result = await onReorderProblem(-1)
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
+  addAdminLockableControl(reorderUpButton)
   reorderManagementRow.appendChild(reorderUpButton)
 
   const reorderDownButton = document.createElement("button")
@@ -797,11 +819,16 @@ export function createShapeSelector({
   reorderDownButton.textContent = "Down"
   reorderDownButton.addEventListener("click", async () => {
     resetDeleteConfirmation()
+    if (!await ensureAdminUnlocked(problemStatus)) {
+      return
+    }
+
     const result = await onReorderProblem(1)
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
+  addAdminLockableControl(reorderDownButton)
   reorderManagementRow.appendChild(reorderDownButton)
 
   const reorderIndexInput = document.createElement("input")
@@ -819,12 +846,17 @@ export function createShapeSelector({
   reorderIndexButton.textContent = "Go"
   reorderIndexButton.addEventListener("click", async () => {
     resetDeleteConfirmation()
+    if (!await ensureAdminUnlocked(problemStatus)) {
+      return
+    }
+
     const index = Number.parseInt(reorderIndexInput.value, 10)
     const result = await onReorderProblemToIndex(index)
 
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
+  addAdminLockableControl(reorderIndexButton)
   reorderManagementRow.appendChild(reorderIndexButton)
 
   reorderIndexInput.addEventListener("keydown", (event) => {
@@ -841,6 +873,10 @@ export function createShapeSelector({
   deleteProblemButton.textContent = "Delete"
   let isDeleteConfirmationPending = false
   deleteProblemButton.addEventListener("click", async () => {
+    if (!await ensureAdminUnlocked(problemStatus)) {
+      return
+    }
+
     if (!isDeleteConfirmationPending) {
       isDeleteConfirmationPending = true
       deleteProblemButton.textContent = "Are you sure?"
@@ -854,6 +890,7 @@ export function createShapeSelector({
     problemStatus.textContent = result.message
     problemStatus.classList.toggle("is-error", !result.ok)
   })
+  addAdminLockableControl(deleteProblemButton)
   problemManagement.appendChild(deleteProblemButton)
 
   root.addEventListener("pointerdown", (event) => {
@@ -1037,6 +1074,7 @@ export function createShapeSelector({
   registerButton.type = "button"
   registerButton.className = "secondary-action-button export-button"
   registerButton.textContent = "Register"
+  addAdminLockableControl(registerButton)
   dataActions.appendChild(registerButton)
 
   const registerChoices = document.createElement("div")
@@ -1056,6 +1094,10 @@ export function createShapeSelector({
     button.className = "secondary-action-button register-choice-button"
     button.textContent = formatDifficulty(difficulty)
     button.addEventListener("click", async () => {
+      if (!await ensureAdminUnlocked(importStatus)) {
+        return
+      }
+
       const result = await onRegisterPuzzle(difficulty, registerTitleInput.value)
 
       importStatus.textContent = result.message
@@ -1066,6 +1108,7 @@ export function createShapeSelector({
         registerChoices.classList.remove("is-visible")
       }
     })
+    addAdminLockableControl(button)
     registerChoices.appendChild(button)
   }
 
@@ -1143,7 +1186,11 @@ export function createShapeSelector({
     importStatus.classList.toggle("is-error", !result.ok)
   })
 
-  registerButton.addEventListener("click", () => {
+  registerButton.addEventListener("click", async () => {
+    if (!await ensureAdminUnlocked(importStatus)) {
+      return
+    }
+
     const isVisible = registerChoices.classList.toggle("is-visible")
 
     if (isVisible) {
@@ -1175,6 +1222,46 @@ export function createShapeSelector({
     setPlacedShapes,
     setSelectedPlacedShape,
     setShapeAvailability,
+    setAdminUnlocked,
+  }
+
+  function addAdminLockableControl(control: HTMLElement) {
+    adminLockableControls.push(control)
+    control.classList.add("admin-lockable")
+    updateAdminLockableControl(control)
+  }
+
+  async function ensureAdminUnlocked(statusElement: HTMLElement): Promise<boolean> {
+    if (adminUnlocked) {
+      return true
+    }
+
+    const isUnlocked = await onRequestAdminUnlock()
+
+    setAdminUnlocked(isUnlocked)
+
+    if (!isUnlocked) {
+      statusElement.textContent = "Admin unlock is required."
+      statusElement.classList.add("is-error")
+      return false
+    }
+
+    statusElement.textContent = "Admin unlocked."
+    statusElement.classList.remove("is-error")
+    return true
+  }
+
+  function setAdminUnlocked(isUnlocked: boolean) {
+    adminUnlocked = isUnlocked
+
+    for (const control of adminLockableControls) {
+      updateAdminLockableControl(control)
+    }
+  }
+
+  function updateAdminLockableControl(control: HTMLElement) {
+    control.classList.toggle("is-admin-locked", !adminUnlocked)
+    control.setAttribute("data-lock-icon", adminUnlocked ? "" : "Lock")
   }
 
   function setSelectedShape(shapeId: string | null) {

@@ -72,7 +72,7 @@ const selectedShapeActions = createSelectedShapeActions()
 const titleScreen = createTitleScreen({
   onEdit: enterEditMode,
 })
-const registerPasswordGate = createRegisterPasswordGate()
+const adminUnlockGate = createAdminUnlockGate()
 
 app.appendChild(selectedShapeActions.element)
 app.appendChild(titleScreen.element)
@@ -92,6 +92,7 @@ type AppSettings = {
 
 const puzzleLibraryStore = createPuzzleLibraryStore()
 let appSettings = loadAppSettings()
+let adminUnlocked = adminUnlockGate.isUnlocked()
 let activeShapeGroup: THREE.Group | null = null
 let appMode: AppMode = "editor"
 let viewerDifficulty: PuzzleDifficulty = "easy"
@@ -122,6 +123,7 @@ let updateSelectedShapeControl: ((shapeId: string | null) => void) | null = null
 let updateShapeAvailability: ((shapeId: string, isAvailable: boolean) => void) | null = null
 let updateAppModeControl: ((mode: AppMode) => void) | null = null
 let updateViewerStateControl: ((state: ViewerPanelState) => void) | null = null
+let updateAdminUnlockedControl: ((isUnlocked: boolean) => void) | null = null
 let selectedPlacedShapeId: string | null = null
 let nextPlacedShapeId = 1
 let editorBoardSnapshotBeforeViewer: PlacedShapeSnapshot | null = null
@@ -698,12 +700,12 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
     showTitleDialog({
       title: "Credits",
       body: [
-        "制作：チームTRI²CUBE",
-        "パズル原案：そーだ（チームTRI²CUBE）",
-        "問題制作：チームTRI²CUBE",
-        "アプリ開発：そーだ（チームTRI²CUBE）",
-        "開発補助：Codex",
-        "使用ツール：TypeScript, Three.js, Vite, Supabase",
+        "Production: Team TRI²CUBE",
+        "Original Puzzle Concept: soda (Team TRI²CUBE)",
+        "Puzzle Creation: Team TRI²CUBE",
+        "App Development: soda (Team TRI²CUBE)",
+        "Development Assistance: Codex",
+        "Tools Used: TypeScript, Three.js, Vite, Supabase",
       ],
     })
   })
@@ -954,14 +956,19 @@ function showTitleDialog({
   }
 }
 
-function createRegisterPasswordGate() {
-  const sessionKey = "tricube:v2:register-unlocked"
+function createAdminUnlockGate() {
+  const sessionKey = "tricube:v2:admin-unlocked"
   const configuredHash = import.meta.env.VITE_REGISTER_PASSWORD_HASH?.trim()
   const configuredPassword = import.meta.env.VITE_REGISTER_PASSWORD?.trim()
 
   return {
+    isUnlocked(): boolean {
+      return window.sessionStorage.getItem(sessionKey) === "1"
+    },
+
     async ensureUnlocked(): Promise<{ ok: boolean, message?: string }> {
       if (!configuredHash && !configuredPassword) {
+        window.sessionStorage.setItem(sessionKey, "1")
         return { ok: true }
       }
 
@@ -969,10 +976,10 @@ function createRegisterPasswordGate() {
         return { ok: true }
       }
 
-      const password = await requestRegisterPassword()
+      const password = await requestAdminPassword()
 
       if (password === null) {
-        return { ok: false, message: "Register cancelled." }
+        return { ok: false, message: "Admin unlock cancelled." }
       }
 
       const isAccepted = configuredHash
@@ -980,7 +987,7 @@ function createRegisterPasswordGate() {
         : password === configuredPassword
 
       if (!isAccepted) {
-        return { ok: false, message: "Register password is incorrect." }
+        return { ok: false, message: "Admin password is incorrect." }
       }
 
       window.sessionStorage.setItem(sessionKey, "1")
@@ -989,7 +996,16 @@ function createRegisterPasswordGate() {
   }
 }
 
-function requestRegisterPassword(): Promise<string | null> {
+async function requestAdminUnlock(): Promise<boolean> {
+  const result = await adminUnlockGate.ensureUnlocked()
+
+  adminUnlocked = result.ok
+  updateAdminUnlockedControl?.(adminUnlocked)
+
+  return result.ok
+}
+
+function requestAdminPassword(): Promise<string | null> {
   return new Promise((resolve) => {
     const backdrop = document.createElement("div")
     backdrop.className = "register-password-backdrop"
@@ -999,18 +1015,18 @@ function requestRegisterPassword(): Promise<string | null> {
     backdrop.appendChild(form)
 
     const title = document.createElement("h2")
-    title.textContent = "Register Password"
+    title.textContent = "Admin Password"
     form.appendChild(title)
 
     const description = document.createElement("p")
-    description.textContent = "Enter the register password to enable puzzle registration."
+    description.textContent = "Enter the admin password to unlock database management."
     form.appendChild(description)
 
     const input = document.createElement("input")
     input.type = "password"
     input.autocomplete = "current-password"
     input.placeholder = "Password"
-    input.setAttribute("aria-label", "Register password")
+    input.setAttribute("aria-label", "Admin password")
     form.appendChild(input)
 
     const actions = document.createElement("div")
@@ -1163,12 +1179,10 @@ async function registerPuzzle(
   requestedTitle: string,
 ): Promise<{ ok: boolean, message: string }> {
   try {
-    const unlockResult = await registerPasswordGate.ensureUnlocked()
-
-    if (!unlockResult.ok) {
+    if (!adminUnlocked && !await requestAdminUnlock()) {
       return {
         ok: false,
-        message: unlockResult.message ?? "Register is locked.",
+        message: "Register is locked.",
       }
     }
 
@@ -2603,6 +2617,8 @@ const shapeSelector = createShapeSelector({
   initialCoreMarkerEnabled: coreMarkerEnabled,
   initialGridVisible: gridVisible,
   initialFloorVisible: floorVisible,
+  initialAdminUnlocked: adminUnlocked,
+  onRequestAdminUnlock: requestAdminUnlock,
   onModeChange: setAppMode,
   onToggleShapeColorMode: toggleShapeColorMode,
   onToggleCellEdges: toggleCellEdges,
@@ -2655,6 +2671,7 @@ updatePlacedShapes = shapeSelector.setPlacedShapes
 updateSelectedPlacedShape = shapeSelector.setSelectedPlacedShape
 updateSelectedShapeControl = shapeSelector.setSelectedShape
 updateShapeAvailability = shapeSelector.setShapeAvailability
+updateAdminUnlockedControl = shapeSelector.setAdminUnlocked
 app.appendChild(shapeSelector.element)
 shapeSelector.element.hidden = true
 

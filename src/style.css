@@ -685,6 +685,34 @@ button {
   font-weight: 750;
 }
 
+.admin-lockable.is-admin-locked {
+  color: #4b5563;
+  background: rgba(229, 231, 235, 0.78);
+  box-shadow: inset 0 0 0 999px rgba(15, 23, 42, 0.04);
+  opacity: 0.68;
+}
+
+.admin-lockable.is-admin-locked::before {
+  content: "Lock";
+  display: inline-grid;
+  min-width: 28px;
+  height: 18px;
+  margin-right: 6px;
+  place-items: center;
+  border: 1px solid rgba(75, 85, 99, 0.2);
+  border-radius: 4px;
+  color: #374151;
+  background: rgba(255, 255, 255, 0.68);
+  font-size: 9px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.admin-lockable.is-admin-locked:hover {
+  opacity: 0.86;
+  background: rgba(243, 244, 246, 0.94);
+}
+
 .shape-button:hover,
 .rotation-button:hover,
 .position-button:hover,
