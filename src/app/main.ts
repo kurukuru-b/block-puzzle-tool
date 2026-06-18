@@ -751,7 +751,7 @@ function showPlayModeDialog() {
   dialog.appendChild(closeButton)
 
   const title = document.createElement("h2")
-  title.textContent = "モードを選択してください"
+  title.textContent = "Select a Mode"
   dialog.appendChild(title)
 
   const actions = document.createElement("div")
