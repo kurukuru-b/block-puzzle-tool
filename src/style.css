@@ -284,6 +284,19 @@ button {
   background: #111827;
 }
 
+.physical-start-button:disabled {
+  opacity: 0.62;
+  cursor: wait;
+}
+
+.physical-start-countdown {
+  min-height: 74px;
+  color: #111827;
+  font: 950 64px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-align: center;
+  text-shadow: 0 12px 28px rgba(42, 52, 68, 0.16);
+}
+
 @media (max-width: 560px) {
   .physical-setup-content {
     width: min(380px, calc(100vw - 40px));
@@ -654,6 +667,18 @@ button {
   pointer-events: auto;
 }
 
+.physical-action-overlay {
+  position: absolute;
+  right: 18px;
+  bottom: 158px;
+  z-index: 3;
+  display: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 230px;
+  pointer-events: auto;
+}
+
 .editor-panels.is-physical-play .ui-toggle-button,
 .editor-panels.is-physical-play .shape-selector,
 .editor-panels.is-physical-play .data-panel {
@@ -670,7 +695,15 @@ button {
 }
 
 .editor-panels.is-physical-play .timer-overlay-actions {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.editor-panels.is-physical-play .timer-overlay-expand-button {
+  display: none;
+}
+
+.editor-panels.is-physical-play .physical-action-overlay {
+  display: grid;
 }
 
 .editor-panels:not(.is-physical-play) .physical-give-up-button {

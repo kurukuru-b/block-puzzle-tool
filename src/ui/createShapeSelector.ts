@@ -260,28 +260,28 @@ export function createShapeSelector({
 
   const giveUpButton = document.createElement("button")
   giveUpButton.type = "button"
-  giveUpButton.className = "timer-overlay-button physical-give-up-button"
+  giveUpButton.className = "hint-overlay-button physical-give-up-button"
   giveUpButton.textContent = "Give Up"
   giveUpButton.addEventListener("click", onGiveUpPhysicalPlay)
   timerOverlayActions.appendChild(giveUpButton)
 
   const physicalColorButton = document.createElement("button")
   physicalColorButton.type = "button"
-  physicalColorButton.className = "timer-overlay-button physical-reveal-action-button"
+  physicalColorButton.className = "hint-overlay-button physical-reveal-action-button"
   physicalColorButton.addEventListener("click", onToggleColor)
   timerOverlayActions.appendChild(physicalColorButton)
 
   const physicalTitleButton = document.createElement("button")
   physicalTitleButton.type = "button"
-  physicalTitleButton.className = "timer-overlay-button physical-reveal-action-button"
+  physicalTitleButton.className = "hint-overlay-button physical-reveal-action-button"
   physicalTitleButton.textContent = "Title"
   physicalTitleButton.addEventListener("click", onReturnToTitle)
   timerOverlayActions.appendChild(physicalTitleButton)
 
   const physicalReturnButton = document.createElement("button")
   physicalReturnButton.type = "button"
-  physicalReturnButton.className = "timer-overlay-button physical-reveal-action-button"
-  physicalReturnButton.textContent = "Physical"
+  physicalReturnButton.className = "hint-overlay-button physical-reveal-action-button"
+  physicalReturnButton.textContent = "Setup"
   physicalReturnButton.addEventListener("click", onReturnToPhysicalSetup)
   timerOverlayActions.appendChild(physicalReturnButton)
 
@@ -290,6 +290,17 @@ export function createShapeSelector({
   timerOverlay.appendChild(timerOverlayText)
 
   root.appendChild(timerOverlay)
+
+  const physicalActionOverlay = document.createElement("div")
+  physicalActionOverlay.className = "physical-action-overlay"
+  root.appendChild(physicalActionOverlay)
+
+  physicalActionOverlay.append(
+    giveUpButton,
+    physicalColorButton,
+    physicalTitleButton,
+    physicalReturnButton,
+  )
 
   const hintOverlay = document.createElement("div")
   hintOverlay.className = "hint-overlay"

@@ -783,7 +783,7 @@ function createPhysicalSetupScreen({
   onStart,
 }: {
   onTitle: () => void
-  onStart: (options: PhysicalSetupOptions) => void
+  onStart: (options: PhysicalSetupOptions) => void | Promise<void>
 }): HTMLElement {
   const panel = document.createElement("div")
   panel.className = "physical-setup-screen"
@@ -856,22 +856,52 @@ function createPhysicalSetupScreen({
 
   fields.appendChild(problemField)
 
+  const countdown = document.createElement("div")
+  countdown.className = "physical-start-countdown"
+  countdown.hidden = true
+  content.appendChild(countdown)
+
   const startButton = document.createElement("button")
   startButton.type = "button"
   startButton.className = "physical-start-button"
   startButton.textContent = "Start"
-  startButton.addEventListener("click", () => {
-    onStart({
+  startButton.addEventListener("click", async () => {
+    const options = {
       difficulty: difficultySelect.value as PuzzleDifficulty,
       timeLimitSeconds: Math.max(0, Number.parseInt(timeInput.value, 10) || 0),
       problemIndex: problemInput.value
         ? Math.max(0, Number.parseInt(problemInput.value, 10) - 1)
         : null,
-    })
+    }
+
+    startButton.disabled = true
+
+    try {
+      await runPhysicalStartCountdown(countdown)
+      await onStart(options)
+    } finally {
+      countdown.hidden = true
+      startButton.disabled = false
+    }
   })
   content.appendChild(startButton)
 
   return panel
+}
+
+async function runPhysicalStartCountdown(element: HTMLElement) {
+  element.hidden = false
+
+  for (const label of ["3", "2", "1", "Start"]) {
+    element.textContent = label
+    await wait(700)
+  }
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
 }
 
 function createPhysicalSetupField(labelText: string): HTMLLabelElement {
@@ -1225,6 +1255,7 @@ async function startPhysicalPlay(options: PhysicalSetupOptions) {
 
   if (viewerProblemSelected) {
     loadSelectedViewerPuzzle()
+    startTimer()
   }
 
   refreshViewerState()
@@ -2364,6 +2395,15 @@ function syncVisualControls() {
 function startStopTimer() {
   if (timerRunning) {
     stopTimer()
+    refreshViewerState()
+    return
+  }
+
+  startTimer()
+}
+
+function startTimer() {
+  if (timerRunning) {
     refreshViewerState()
     return
   }
