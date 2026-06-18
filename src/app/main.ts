@@ -125,6 +125,7 @@ let updateSelectedPlacedShape: ((id: string | null) => void) | null = null
 let updateSelectedShapeControl: ((shapeId: string | null) => void) | null = null
 let updateShapeAvailability: ((shapeId: string, isAvailable: boolean) => void) | null = null
 let updateAppModeControl: ((mode: AppMode) => void) | null = null
+let updatePhysicalPlayControl: ((isActive: boolean) => void) | null = null
 let updateViewerStateControl: ((state: ViewerPanelState) => void) | null = null
 let updateAdminUnlockedControl: ((isUnlocked: boolean) => void) | null = null
 let selectedPlacedShapeId: string | null = null
@@ -1099,12 +1100,14 @@ function appendSettingsField(
 function enterEditMode() {
   titleScreen.hide()
   shapeSelector.element.hidden = false
+  updatePhysicalPlayControl?.(false)
   setAppMode("editor")
 }
 
 async function startPhysicalPlay(options: PhysicalSetupOptions) {
   titleScreen.hide()
   shapeSelector.element.hidden = false
+  updatePhysicalPlayControl?.(true)
 
   countdownSeconds = options.timeLimitSeconds
   setTimerMode("down")
@@ -1136,6 +1139,7 @@ async function startPhysicalPlay(options: PhysicalSetupOptions) {
 
 function returnToTitle() {
   clearSelection()
+  updatePhysicalPlayControl?.(false)
   shapeSelector.element.hidden = true
   titleScreen.show()
 }
@@ -2933,6 +2937,7 @@ const shapeSelector = createShapeSelector({
 })
 
 updateAppModeControl = shapeSelector.setMode
+updatePhysicalPlayControl = shapeSelector.setPhysicalPlayActive
 updateViewerStateControl = shapeSelector.setViewerState
 updatePositionControls = shapeSelector.setPosition
 updatePlacedShapes = shapeSelector.setPlacedShapes

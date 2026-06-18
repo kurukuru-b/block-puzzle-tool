@@ -129,6 +129,7 @@ type CreateShapeSelectorParams = {
 type ShapeSelector = {
   element: HTMLElement
   setMode: (mode: AppMode) => void
+  setPhysicalPlayActive: (isActive: boolean) => void
   setViewerState: (state: ViewerPanelState) => void
   setPosition: (pos: GridPos) => void
   setSelectedShape: (shapeId: string | null) => void
@@ -244,6 +245,13 @@ export function createShapeSelector({
     timerOverlayExpandButton.setAttribute("aria-expanded", String(isExpanded))
   })
   timerOverlayActions.appendChild(timerOverlayExpandButton)
+
+  const giveUpButton = document.createElement("button")
+  giveUpButton.type = "button"
+  giveUpButton.className = "timer-overlay-button physical-give-up-button"
+  giveUpButton.textContent = "Give Up"
+  giveUpButton.addEventListener("click", onReturnToTitle)
+  timerOverlayActions.appendChild(giveUpButton)
 
   const timerOverlayText = document.createElement("span")
   timerOverlayText.className = "timer-overlay-text"
@@ -1216,6 +1224,7 @@ export function createShapeSelector({
   return {
     element: root,
     setMode,
+    setPhysicalPlayActive,
     setViewerState,
     setPosition,
     setSelectedShape,
@@ -1223,6 +1232,10 @@ export function createShapeSelector({
     setSelectedPlacedShape,
     setShapeAvailability,
     setAdminUnlocked,
+  }
+
+  function setPhysicalPlayActive(isActive: boolean) {
+    root.classList.toggle("is-physical-play", isActive)
   }
 
   function addAdminLockableControl(control: HTMLElement) {

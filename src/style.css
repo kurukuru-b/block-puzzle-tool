@@ -624,6 +624,34 @@ button {
   pointer-events: auto;
 }
 
+.editor-panels.is-physical-play .ui-toggle-button,
+.editor-panels.is-physical-play .shape-selector,
+.editor-panels.is-physical-play .data-panel {
+  display: none;
+}
+
+.editor-panels.is-physical-play .hint-result-panel {
+  left: 18px;
+  width: min(280px, calc(100vw - 36px));
+}
+
+.editor-panels.is-physical-play .timer-overlay {
+  min-width: 230px;
+}
+
+.editor-panels.is-physical-play .timer-overlay-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.editor-panels:not(.is-physical-play) .physical-give-up-button {
+  display: none;
+}
+
+.editor-panels.is-physical-play .hint-overlay {
+  right: 266px;
+  bottom: 18px;
+}
+
 .hint-overlay-button,
 .hint-menu-button {
   height: 34px;
