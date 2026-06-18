@@ -126,11 +126,21 @@ let updateSelectedShapeControl: ((shapeId: string | null) => void) | null = null
 let updateShapeAvailability: ((shapeId: string, isAvailable: boolean) => void) | null = null
 let updateAppModeControl: ((mode: AppMode) => void) | null = null
 let updatePhysicalPlayControl: ((isActive: boolean) => void) | null = null
+let updatePhysicalRevealControl: ((isRevealed: boolean) => void) | null = null
+let updateVisualStateControl: ((state: {
+  shapeColorMode: ShapeColorMode
+  cellEdgesEnabled: boolean
+  coreMarkerEnabled: boolean
+  gridVisible: boolean
+  floorVisible: boolean
+}) => void) | null = null
 let updateViewerStateControl: ((state: ViewerPanelState) => void) | null = null
 let updateAdminUnlockedControl: ((isUnlocked: boolean) => void) | null = null
 let selectedPlacedShapeId: string | null = null
 let nextPlacedShapeId = 1
 let editorBoardSnapshotBeforeViewer: PlacedShapeSnapshot | null = null
+let isPhysicalPlayActive = false
+let isPhysicalAnswerRevealed = false
 const placedShapes: PlacedShapeRecord[] = []
 const occupiedCells = new Set<string>()
 const undoStack: PlacedShapeSnapshot[] = []
@@ -741,6 +751,10 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
       element.hidden = false
       showTitleHome()
     },
+    showPhysicalSetup() {
+      element.hidden = false
+      showPhysicalSetup()
+    },
   }
 
   function showTitleHome() {
@@ -1021,11 +1035,56 @@ function showSettingsDialog() {
   seInput.value = String(appSettings.seVolume)
   const seValue = appendSettingsField(body, "SE Volume", seInput)
 
+  const visualSection = document.createElement("div")
+  visualSection.className = "settings-toggle-grid"
+  body.appendChild(visualSection)
+
+  const colorModeButton = createSettingsToggleButton("New Color")
+  const colorVisibilityButton = createSettingsToggleButton("Color Off")
+  const edgesButton = createSettingsToggleButton("Edges Off")
+  const coreButton = createSettingsToggleButton("Core Off")
+  const gridButton = createSettingsToggleButton("Grid On")
+  const floorButton = createSettingsToggleButton("Floor On")
+
+  visualSection.append(
+    colorModeButton,
+    colorVisibilityButton,
+    edgesButton,
+    coreButton,
+    gridButton,
+    floorButton,
+  )
+
   syncSettingValueLabels()
+  syncVisualSettingButtons()
 
   languageSelect.addEventListener("change", saveFromControls)
   bgmInput.addEventListener("input", saveFromControls)
   seInput.addEventListener("input", saveFromControls)
+  colorModeButton.addEventListener("click", () => {
+    setShapeColorMode(shapeColorMode === "new" ? "old" : "new")
+    syncVisualSettingButtons()
+  })
+  colorVisibilityButton.addEventListener("click", () => {
+    setShapeColorVisibility(!shapeColorEnabled)
+    syncVisualSettingButtons()
+  })
+  edgesButton.addEventListener("click", () => {
+    setCellEdgesEnabled(!cellEdgesEnabled)
+    syncVisualSettingButtons()
+  })
+  coreButton.addEventListener("click", () => {
+    setCoreMarkerEnabled(!coreMarkerEnabled)
+    syncVisualSettingButtons()
+  })
+  gridButton.addEventListener("click", () => {
+    setGridVisible(!gridVisible)
+    syncVisualSettingButtons()
+  })
+  floorButton.addEventListener("click", () => {
+    setFloorVisible(!floorVisible)
+    syncVisualSettingButtons()
+  })
 
   const note = document.createElement("p")
   note.className = "settings-note"
@@ -1063,6 +1122,28 @@ function showSettingsDialog() {
     seValue.textContent = `${seInput.value}%`
   }
 
+  function syncVisualSettingButtons() {
+    const isPlayColorLocked = isPhysicalPlayActive && !isPhysicalAnswerRevealed
+
+    colorModeButton.textContent = shapeColorMode === "new" ? "New Color" : "Old Color"
+    colorVisibilityButton.textContent = shapeColorEnabled ? "Color On" : "Color Off"
+    colorVisibilityButton.disabled = isPlayColorLocked
+    colorVisibilityButton.title = isPlayColorLocked
+      ? "Color is forced off during Physical play."
+      : ""
+    edgesButton.textContent = cellEdgesEnabled ? "Edges On" : "Edges Off"
+    coreButton.textContent = coreMarkerEnabled ? "Core On" : "Core Off"
+    gridButton.textContent = gridVisible ? "Grid On" : "Grid Off"
+    floorButton.textContent = floorVisible ? "Floor On" : "Floor Off"
+
+    colorModeButton.classList.toggle("is-selected", shapeColorMode === "new")
+    colorVisibilityButton.classList.toggle("is-selected", shapeColorEnabled)
+    edgesButton.classList.toggle("is-selected", cellEdgesEnabled)
+    coreButton.classList.toggle("is-selected", coreMarkerEnabled)
+    gridButton.classList.toggle("is-selected", gridVisible)
+    floorButton.classList.toggle("is-selected", floorVisible)
+  }
+
   function close() {
     document.removeEventListener("keydown", onKeyDown)
     backdrop.remove()
@@ -1097,17 +1178,29 @@ function appendSettingsField(
   return value
 }
 
+function createSettingsToggleButton(label: string): HTMLButtonElement {
+  const button = document.createElement("button")
+  button.type = "button"
+  button.className = "settings-toggle-button"
+  button.textContent = label
+
+  return button
+}
+
 function enterEditMode() {
   titleScreen.hide()
   shapeSelector.element.hidden = false
-  updatePhysicalPlayControl?.(false)
+  setPhysicalPlayActive(false)
+  setPhysicalAnswerRevealed(false)
   setAppMode("editor")
 }
 
 async function startPhysicalPlay(options: PhysicalSetupOptions) {
   titleScreen.hide()
   shapeSelector.element.hidden = false
-  updatePhysicalPlayControl?.(true)
+  setPhysicalPlayActive(true)
+  setPhysicalAnswerRevealed(false)
+  setShapeColorVisibility(false)
 
   countdownSeconds = options.timeLimitSeconds
   setTimerMode("down")
@@ -1139,9 +1232,38 @@ async function startPhysicalPlay(options: PhysicalSetupOptions) {
 
 function returnToTitle() {
   clearSelection()
-  updatePhysicalPlayControl?.(false)
+  setPhysicalPlayActive(false)
+  setPhysicalAnswerRevealed(false)
   shapeSelector.element.hidden = true
   titleScreen.show()
+}
+
+function returnToPhysicalSetup() {
+  clearSelection()
+  setPhysicalPlayActive(false)
+  setPhysicalAnswerRevealed(false)
+  shapeSelector.element.hidden = true
+  titleScreen.showPhysicalSetup()
+}
+
+function setPhysicalPlayActive(isActive: boolean) {
+  isPhysicalPlayActive = isActive
+  updatePhysicalPlayControl?.(isActive)
+}
+
+function setPhysicalAnswerRevealed(isRevealed: boolean) {
+  isPhysicalAnswerRevealed = isRevealed
+  updatePhysicalRevealControl?.(isRevealed)
+}
+
+function giveUpPhysicalPlay() {
+  if (!isPhysicalPlayActive) {
+    return
+  }
+
+  stopTimer()
+  setPhysicalAnswerRevealed(true)
+  setShapeColorVisibility(true)
 }
 
 function showTitleDialog({
@@ -2094,10 +2216,7 @@ async function deleteSelectedViewerProblem(): Promise<{ ok: boolean, message: st
 }
 
 function toggleShapeColorVisibility() {
-  shapeColorEnabled = !shapeColorEnabled
-  renderSelectedShape()
-  rebuildAllPlacedShapeGroups()
-  refreshViewerState()
+  setShapeColorVisibility(!shapeColorEnabled)
 }
 
 function toggleViewerHintShape(shapeId: string) {
@@ -2170,32 +2289,76 @@ function resetViewerHintState() {
 }
 
 function toggleShapeColorMode() {
-  shapeColorMode = shapeColorMode === "new" ? "old" : "new"
-  rebuildAllPlacedShapeGroups()
-  renderSelectedShape()
-  refreshViewerState()
+  setShapeColorMode(shapeColorMode === "new" ? "old" : "new")
 }
 
 function toggleCellEdges() {
-  cellEdgesEnabled = !cellEdgesEnabled
-  rebuildAllPlacedShapeGroups()
-  renderSelectedShape()
+  setCellEdgesEnabled(!cellEdgesEnabled)
 }
 
 function toggleCoreMarker() {
-  coreMarkerEnabled = !coreMarkerEnabled
-  rebuildAllPlacedShapeGroups()
-  renderSelectedShape()
+  setCoreMarkerEnabled(!coreMarkerEnabled)
 }
 
 function toggleGridVisibility() {
-  gridVisible = !gridVisible
-  mainScene.gridCells.visible = gridVisible
+  setGridVisible(!gridVisible)
 }
 
 function toggleFloorVisibility() {
-  floorVisible = !floorVisible
+  setFloorVisible(!floorVisible)
+}
+
+function setShapeColorVisibility(isEnabled: boolean) {
+  shapeColorEnabled = (isPhysicalPlayActive && !isPhysicalAnswerRevealed)
+    ? false
+    : isEnabled
+  renderSelectedShape()
+  rebuildAllPlacedShapeGroups()
+  refreshViewerState()
+}
+
+function setShapeColorMode(mode: ShapeColorMode) {
+  shapeColorMode = mode
+  rebuildAllPlacedShapeGroups()
+  renderSelectedShape()
+  refreshViewerState()
+  syncVisualControls()
+}
+
+function setCellEdgesEnabled(isEnabled: boolean) {
+  cellEdgesEnabled = isEnabled
+  rebuildAllPlacedShapeGroups()
+  renderSelectedShape()
+  syncVisualControls()
+}
+
+function setCoreMarkerEnabled(isEnabled: boolean) {
+  coreMarkerEnabled = isEnabled
+  rebuildAllPlacedShapeGroups()
+  renderSelectedShape()
+  syncVisualControls()
+}
+
+function setGridVisible(isVisible: boolean) {
+  gridVisible = isVisible
+  mainScene.gridCells.visible = gridVisible
+  syncVisualControls()
+}
+
+function setFloorVisible(isVisible: boolean) {
+  floorVisible = isVisible
   mainScene.floorMarker.visible = floorVisible
+  syncVisualControls()
+}
+
+function syncVisualControls() {
+  updateVisualStateControl?.({
+    shapeColorMode,
+    cellEdgesEnabled,
+    coreMarkerEnabled,
+    gridVisible,
+    floorVisible,
+  })
 }
 
 function startStopTimer() {
@@ -2931,6 +3094,8 @@ const shapeSelector = createShapeSelector({
   onDeletePlacedShape: deleteSelectedPlacedShape,
   onEditPlacedShape: editSelectedPlacedShape,
   onReturnToTitle: returnToTitle,
+  onReturnToPhysicalSetup: returnToPhysicalSetup,
+  onGiveUpPhysicalPlay: giveUpPhysicalPlay,
   onExportPuzzle: exportPuzzle,
   onImportPuzzle: importPuzzle,
   onRegisterPuzzle: registerPuzzle,
@@ -2938,6 +3103,8 @@ const shapeSelector = createShapeSelector({
 
 updateAppModeControl = shapeSelector.setMode
 updatePhysicalPlayControl = shapeSelector.setPhysicalPlayActive
+updatePhysicalRevealControl = shapeSelector.setPhysicalAnswerRevealed
+updateVisualStateControl = shapeSelector.setVisualState
 updateViewerStateControl = shapeSelector.setViewerState
 updatePositionControls = shapeSelector.setPosition
 updatePlacedShapes = shapeSelector.setPlacedShapes

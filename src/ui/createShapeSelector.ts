@@ -121,6 +121,8 @@ type CreateShapeSelectorParams = {
   onDeletePlacedShape: () => void
   onEditPlacedShape: () => void
   onReturnToTitle: () => void
+  onReturnToPhysicalSetup: () => void
+  onGiveUpPhysicalPlay: () => void
   onExportPuzzle: () => string
   onImportPuzzle: (source: string) => ImportPuzzleResult
   onRegisterPuzzle: (difficulty: PuzzleDifficulty, title: string) => MaybePromise<ImportPuzzleResult>
@@ -130,6 +132,14 @@ type ShapeSelector = {
   element: HTMLElement
   setMode: (mode: AppMode) => void
   setPhysicalPlayActive: (isActive: boolean) => void
+  setPhysicalAnswerRevealed: (isRevealed: boolean) => void
+  setVisualState: (state: {
+    shapeColorMode: ShapeColorMode
+    cellEdgesEnabled: boolean
+    coreMarkerEnabled: boolean
+    gridVisible: boolean
+    floorVisible: boolean
+  }) => void
   setViewerState: (state: ViewerPanelState) => void
   setPosition: (pos: GridPos) => void
   setSelectedShape: (shapeId: string | null) => void
@@ -193,6 +203,8 @@ export function createShapeSelector({
   onDeletePlacedShape,
   onEditPlacedShape,
   onReturnToTitle,
+  onReturnToPhysicalSetup,
+  onGiveUpPhysicalPlay,
   onExportPuzzle,
   onImportPuzzle,
   onRegisterPuzzle,
@@ -250,8 +262,28 @@ export function createShapeSelector({
   giveUpButton.type = "button"
   giveUpButton.className = "timer-overlay-button physical-give-up-button"
   giveUpButton.textContent = "Give Up"
-  giveUpButton.addEventListener("click", onReturnToTitle)
+  giveUpButton.addEventListener("click", onGiveUpPhysicalPlay)
   timerOverlayActions.appendChild(giveUpButton)
+
+  const physicalColorButton = document.createElement("button")
+  physicalColorButton.type = "button"
+  physicalColorButton.className = "timer-overlay-button physical-reveal-action-button"
+  physicalColorButton.addEventListener("click", onToggleColor)
+  timerOverlayActions.appendChild(physicalColorButton)
+
+  const physicalTitleButton = document.createElement("button")
+  physicalTitleButton.type = "button"
+  physicalTitleButton.className = "timer-overlay-button physical-reveal-action-button"
+  physicalTitleButton.textContent = "Title"
+  physicalTitleButton.addEventListener("click", onReturnToTitle)
+  timerOverlayActions.appendChild(physicalTitleButton)
+
+  const physicalReturnButton = document.createElement("button")
+  physicalReturnButton.type = "button"
+  physicalReturnButton.className = "timer-overlay-button physical-reveal-action-button"
+  physicalReturnButton.textContent = "Physical"
+  physicalReturnButton.addEventListener("click", onReturnToPhysicalSetup)
+  timerOverlayActions.appendChild(physicalReturnButton)
 
   const timerOverlayText = document.createElement("span")
   timerOverlayText.className = "timer-overlay-text"
@@ -1225,6 +1257,8 @@ export function createShapeSelector({
     element: root,
     setMode,
     setPhysicalPlayActive,
+    setPhysicalAnswerRevealed,
+    setVisualState,
     setViewerState,
     setPosition,
     setSelectedShape,
@@ -1236,6 +1270,30 @@ export function createShapeSelector({
 
   function setPhysicalPlayActive(isActive: boolean) {
     root.classList.toggle("is-physical-play", isActive)
+  }
+
+  function setPhysicalAnswerRevealed(isRevealed: boolean) {
+    root.classList.toggle("is-physical-answer-revealed", isRevealed)
+  }
+
+  function setVisualState(state: {
+    shapeColorMode: ShapeColorMode
+    cellEdgesEnabled: boolean
+    coreMarkerEnabled: boolean
+    gridVisible: boolean
+    floorVisible: boolean
+  }) {
+    shapeColorMode = state.shapeColorMode
+    cellEdgesEnabled = state.cellEdgesEnabled
+    coreMarkerEnabled = state.coreMarkerEnabled
+    gridVisible = state.gridVisible
+    floorVisible = state.floorVisible
+    updateShapeColorModeButton()
+    updateShapeButtonAppearances()
+    updateCellEdgesButton()
+    updateCoreMarkerButton()
+    updateGridButton()
+    updateFloorButton()
   }
 
   function addAdminLockableControl(control: HTMLElement) {
@@ -1385,6 +1443,8 @@ export function createShapeSelector({
 
     colorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
     colorButton.classList.toggle("is-selected", state.colorEnabled)
+    physicalColorButton.textContent = state.colorEnabled ? "Color On" : "Color Off"
+    physicalColorButton.classList.toggle("is-selected", state.colorEnabled)
     timerLabel.textContent = state.timerText
     timerOverlayText.textContent = state.timerText
     timerOverlayButton.textContent = state.timerRunning ? "Stop" : "Start"
