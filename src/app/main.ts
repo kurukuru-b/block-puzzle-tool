@@ -124,6 +124,8 @@ let timerElapsedSeconds = 0
 let countdownSeconds = 300
 let timerIntervalId: number | null = null
 let alarmAudioContext: AudioContext | null = null
+let settingsBackdrop: HTMLElement | null = null
+let closeSettingsDialog: (() => void) | null = null
 let selectedShapeId: string | null = null
 let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
 let previewOrigin: GridPos = { x: 0, y: 0, z: 0 }
@@ -476,8 +478,8 @@ function createPlaySettingsButton(): HTMLButtonElement {
   return button
 }
 
-function setPlaySettingsVisible(_isVisible: boolean) {
-  playSettingsButton.hidden = false
+function setPlaySettingsVisible(isVisible: boolean) {
+  playSettingsButton.hidden = !isVisible
 }
 
 function setAppMode(mode: AppMode) {
@@ -490,6 +492,7 @@ function setAppMode(mode: AppMode) {
   appMode = mode
   editorAxisGuide.visible = appMode === "editor"
   updateAppModeControl?.(appMode)
+  setPlaySettingsVisible(isPhysicalPlayActive)
   clearSelection()
 
   if (appMode === "viewer") {
@@ -774,6 +777,7 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   }
 
   function showTitleHome() {
+    setPlaySettingsVisible(true)
     element.classList.remove("is-physical-setup")
     content.hidden = false
     creditButton.hidden = false
@@ -781,6 +785,7 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   }
 
   function showPhysicalSetup() {
+    setPlaySettingsVisible(true)
     element.classList.add("is-physical-setup")
     content.hidden = true
     creditButton.hidden = true
@@ -963,7 +968,7 @@ async function runPhysicalStartCountdown(element: HTMLElement) {
 
   for (const label of ["3", "2", "1", "Start"]) {
     element.textContent = label
-    await wait(700)
+    await wait(1000)
   }
 }
 
@@ -1131,8 +1136,14 @@ function clampVolume(value: unknown): number {
 }
 
 function showSettingsDialog() {
+  if (closeSettingsDialog) {
+    closeSettingsDialog()
+    return
+  }
+
   const backdrop = document.createElement("div")
   backdrop.className = "title-dialog-backdrop"
+  settingsBackdrop = backdrop
 
   const dialog = document.createElement("section")
   dialog.className = "title-dialog settings-dialog"
@@ -1271,6 +1282,7 @@ function showSettingsDialog() {
 
   document.addEventListener("keydown", onKeyDown)
   app!.appendChild(backdrop)
+  closeSettingsDialog = close
   languageSelect.focus()
 
   function saveFromControls() {
@@ -1315,6 +1327,12 @@ function showSettingsDialog() {
   function close() {
     document.removeEventListener("keydown", onKeyDown)
     backdrop.remove()
+    if (settingsBackdrop === backdrop) {
+      settingsBackdrop = null
+    }
+    if (closeSettingsDialog === close) {
+      closeSettingsDialog = null
+    }
   }
 
   function onKeyDown(event: KeyboardEvent) {
