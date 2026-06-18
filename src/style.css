@@ -56,6 +56,10 @@ button {
   display: none;
 }
 
+.title-screen.is-physical-setup .title-screen__content {
+  display: none;
+}
+
 .title-screen__content {
   display: grid;
   gap: 34px;
@@ -260,6 +264,22 @@ button {
 
 .physical-problem-controls button:hover {
   background: #f3f4f6;
+}
+
+.physical-start-button {
+  height: 58px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 8px;
+  color: #ffffff;
+  background: #1f2937;
+  box-shadow: 0 14px 28px rgba(42, 52, 68, 0.18);
+  font-size: 18px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.physical-start-button:hover {
+  background: #111827;
 }
 
 @media (max-width: 560px) {

@@ -742,12 +742,14 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   }
 
   function showTitleHome() {
+    element.classList.remove("is-physical-setup")
     content.hidden = false
     creditButton.hidden = false
     physicalSetup.hidden = true
   }
 
   function showPhysicalSetup() {
+    element.classList.add("is-physical-setup")
     content.hidden = true
     creditButton.hidden = true
     physicalSetup.hidden = false
@@ -771,7 +773,7 @@ function createPhysicalSetupScreen({ onTitle }: { onTitle: () => void }): HTMLEl
   panel.appendChild(content)
 
   const heading = document.createElement("h1")
-  heading.textContent = "Physical"
+  heading.textContent = "Physical Mode"
   content.appendChild(heading)
 
   const fields = document.createElement("div")
@@ -793,23 +795,14 @@ function createPhysicalSetupScreen({ onTitle }: { onTitle: () => void }): HTMLEl
   fields.appendChild(difficultyField)
 
   const timeField = createPhysicalSetupField("Time Limit")
-  const timeSelect = document.createElement("select")
-  timeSelect.setAttribute("aria-label", "Time limit")
-
-  for (const timeLimit of [
-    { label: "3 min", value: "180" },
-    { label: "5 min", value: "300" },
-    { label: "10 min", value: "600" },
-    { label: "No Limit", value: "0" },
-  ]) {
-    const option = document.createElement("option")
-    option.value = timeLimit.value
-    option.textContent = timeLimit.label
-    timeSelect.appendChild(option)
-  }
-
-  timeSelect.value = "300"
-  timeField.appendChild(timeSelect)
+  const timeInput = document.createElement("input")
+  timeInput.type = "number"
+  timeInput.min = "0"
+  timeInput.step = "1"
+  timeInput.value = "300"
+  timeInput.placeholder = "Seconds"
+  timeInput.setAttribute("aria-label", "Time limit in seconds")
+  timeField.appendChild(timeInput)
   fields.appendChild(timeField)
 
   const problemField = createPhysicalSetupField("Problem")
@@ -834,6 +827,12 @@ function createPhysicalSetupScreen({ onTitle }: { onTitle: () => void }): HTMLEl
   problemControls.appendChild(randomButton)
 
   fields.appendChild(problemField)
+
+  const startButton = document.createElement("button")
+  startButton.type = "button"
+  startButton.className = "physical-start-button"
+  startButton.textContent = "Start"
+  content.appendChild(startButton)
 
   return panel
 }
