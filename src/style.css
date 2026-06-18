@@ -156,6 +156,128 @@ button {
   cursor: pointer;
 }
 
+.physical-setup-screen {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 84px 28px 56px;
+}
+
+.physical-setup-screen[hidden] {
+  display: none;
+}
+
+.physical-title-button {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  height: 46px;
+  padding: 0 18px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 6px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 24px rgba(42, 52, 68, 0.14);
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.physical-title-button:hover {
+  background: #ffffff;
+}
+
+.physical-setup-content {
+  display: grid;
+  width: min(640px, calc(100vw - 56px));
+  gap: 26px;
+  justify-items: stretch;
+  transform: translateY(-4vh);
+}
+
+.physical-setup-content h1 {
+  margin: 0;
+  color: #111827;
+  font-size: clamp(42px, 7vw, 84px);
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 0.95;
+  text-align: center;
+  text-shadow: 0 12px 30px rgba(42, 52, 68, 0.16);
+}
+
+.physical-setup-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.physical-setup-field {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 22px rgba(42, 52, 68, 0.1);
+}
+
+.physical-setup-field > span {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.physical-setup-field select,
+.physical-setup-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(107, 114, 128, 0.34);
+  border-radius: 6px;
+  color: #111827;
+  background: #ffffff;
+  font: 850 14px/1 system-ui, sans-serif;
+}
+
+.physical-problem-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 116px;
+  gap: 10px;
+}
+
+.physical-problem-controls button {
+  height: 44px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 6px;
+  color: #111827;
+  background: #ffffff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.physical-problem-controls button:hover {
+  background: #f3f4f6;
+}
+
+@media (max-width: 560px) {
+  .physical-setup-content {
+    width: min(380px, calc(100vw - 40px));
+    transform: translateY(-2vh);
+  }
+
+  .physical-setup-field {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .physical-problem-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
 .title-dialog-backdrop,
 .register-password-backdrop {
   position: absolute;

@@ -693,7 +693,11 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   playButton.type = "button"
   playButton.className = "title-action-button"
   playButton.textContent = "Play"
-  playButton.addEventListener("click", showPlayModeDialog)
+  playButton.addEventListener("click", () => {
+    showPlayModeDialog({
+      onPhysical: showPhysicalSetup,
+    })
+  })
   actions.appendChild(playButton)
 
   const versionLabel = document.createElement("span")
@@ -720,6 +724,12 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   })
   element.appendChild(creditButton)
 
+  const physicalSetup = createPhysicalSetupScreen({
+    onTitle: showTitleHome,
+  })
+  physicalSetup.hidden = true
+  element.appendChild(physicalSetup)
+
   return {
     element,
     hide() {
@@ -727,11 +737,119 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
     },
     show() {
       element.hidden = false
+      showTitleHome()
     },
+  }
+
+  function showTitleHome() {
+    content.hidden = false
+    creditButton.hidden = false
+    physicalSetup.hidden = true
+  }
+
+  function showPhysicalSetup() {
+    content.hidden = true
+    creditButton.hidden = true
+    physicalSetup.hidden = false
   }
 }
 
-function showPlayModeDialog() {
+function createPhysicalSetupScreen({ onTitle }: { onTitle: () => void }): HTMLElement {
+  const panel = document.createElement("div")
+  panel.className = "physical-setup-screen"
+
+  const titleButton = document.createElement("button")
+  titleButton.type = "button"
+  titleButton.className = "physical-title-button"
+  titleButton.textContent = "Title"
+  titleButton.addEventListener("click", onTitle)
+  panel.appendChild(titleButton)
+
+  const content = document.createElement("section")
+  content.className = "physical-setup-content"
+  content.setAttribute("aria-label", "Physical play setup")
+  panel.appendChild(content)
+
+  const heading = document.createElement("h1")
+  heading.textContent = "Physical"
+  content.appendChild(heading)
+
+  const fields = document.createElement("div")
+  fields.className = "physical-setup-fields"
+  content.appendChild(fields)
+
+  const difficultyField = createPhysicalSetupField("Difficulty")
+  const difficultySelect = document.createElement("select")
+  difficultySelect.setAttribute("aria-label", "Difficulty")
+
+  for (const difficulty of PUZZLE_DIFFICULTIES) {
+    const option = document.createElement("option")
+    option.value = difficulty
+    option.textContent = formatDifficulty(difficulty)
+    difficultySelect.appendChild(option)
+  }
+
+  difficultyField.appendChild(difficultySelect)
+  fields.appendChild(difficultyField)
+
+  const timeField = createPhysicalSetupField("Time Limit")
+  const timeSelect = document.createElement("select")
+  timeSelect.setAttribute("aria-label", "Time limit")
+
+  for (const timeLimit of [
+    { label: "3 min", value: "180" },
+    { label: "5 min", value: "300" },
+    { label: "10 min", value: "600" },
+    { label: "No Limit", value: "0" },
+  ]) {
+    const option = document.createElement("option")
+    option.value = timeLimit.value
+    option.textContent = timeLimit.label
+    timeSelect.appendChild(option)
+  }
+
+  timeSelect.value = "300"
+  timeField.appendChild(timeSelect)
+  fields.appendChild(timeField)
+
+  const problemField = createPhysicalSetupField("Problem")
+  const problemControls = document.createElement("div")
+  problemControls.className = "physical-problem-controls"
+  problemField.appendChild(problemControls)
+
+  const problemInput = document.createElement("input")
+  problemInput.type = "number"
+  problemInput.min = "1"
+  problemInput.step = "1"
+  problemInput.placeholder = "No."
+  problemInput.setAttribute("aria-label", "Problem number")
+  problemControls.appendChild(problemInput)
+
+  const randomButton = document.createElement("button")
+  randomButton.type = "button"
+  randomButton.textContent = "Random"
+  randomButton.addEventListener("click", () => {
+    problemInput.value = ""
+  })
+  problemControls.appendChild(randomButton)
+
+  fields.appendChild(problemField)
+
+  return panel
+}
+
+function createPhysicalSetupField(labelText: string): HTMLLabelElement {
+  const label = document.createElement("label")
+  label.className = "physical-setup-field"
+
+  const text = document.createElement("span")
+  text.textContent = labelText
+  label.appendChild(text)
+
+  return label
+}
+
+function showPlayModeDialog({ onPhysical }: { onPhysical: () => void }) {
   const backdrop = document.createElement("div")
   backdrop.className = "title-dialog-backdrop"
 
@@ -763,7 +881,13 @@ function showPlayModeDialog() {
     button.type = "button"
     button.className = "play-mode-button"
     button.textContent = mode
-    button.addEventListener("click", close)
+    button.addEventListener("click", () => {
+      close()
+
+      if (mode === "Physical") {
+        onPhysical()
+      }
+    })
     actions.appendChild(button)
   }
 
