@@ -1521,7 +1521,6 @@ function createAdminUnlockGate() {
   const sessionKey = "tricube:v2:admin-unlocked"
   const credentialKey = "tricube:v2:admin-credential"
   const configuredHash = import.meta.env.VITE_REGISTER_PASSWORD_HASH?.trim()
-  const configuredPassword = import.meta.env.VITE_REGISTER_PASSWORD?.trim()
 
   return {
     getCredential(): string | null {
@@ -1558,11 +1557,9 @@ function createAdminUnlockGate() {
         return { ok: false, message: "Admin unlock cancelled." }
       }
 
-      const isAccepted = !configuredHash && !configuredPassword
-        ? true
-        : configuredHash
-          ? await verifyPasswordHash(password, configuredHash)
-          : password === configuredPassword
+      const isAccepted = configuredHash
+        ? await verifyPasswordHash(password, configuredHash)
+        : true
 
       if (!isAccepted) {
         return { ok: false, message: "Admin password is incorrect." }
