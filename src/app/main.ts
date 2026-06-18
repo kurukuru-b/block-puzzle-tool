@@ -72,10 +72,12 @@ const selectedShapeActions = createSelectedShapeActions()
 const titleScreen = createTitleScreen({
   onEdit: enterEditMode,
 })
+const playSettingsButton = createPlaySettingsButton()
 const adminUnlockGate = createAdminUnlockGate()
 
 app.appendChild(selectedShapeActions.element)
 app.appendChild(titleScreen.element)
+app.appendChild(playSettingsButton)
 
 type PlacedShapeRecord = PlacedShape & {
   id: string
@@ -115,6 +117,7 @@ let timerRunning = false
 let timerElapsedSeconds = 0
 let countdownSeconds = 300
 let timerIntervalId: number | null = null
+let alarmAudioContext: AudioContext | null = null
 let selectedShapeId: string | null = null
 let selectedRotation: ShapeRotation = { x: 0, y: 0, z: 0 }
 let previewOrigin: GridPos = { x: 0, y: 0, z: 0 }
@@ -454,6 +457,22 @@ function getLocalCellBounds(cells: Array<{ x: number, y: number, z: number }>) {
     minZ: Math.min(...cells.map((cell) => cell.z)),
     maxZ: Math.max(...cells.map((cell) => cell.z)),
   }
+}
+
+function createPlaySettingsButton(): HTMLButtonElement {
+  const button = document.createElement("button")
+  button.type = "button"
+  button.className = "title-icon-button play-settings-button"
+  button.setAttribute("aria-label", "Settings")
+  button.textContent = "⚙"
+  button.hidden = true
+  button.addEventListener("click", showSettingsDialog)
+
+  return button
+}
+
+function setPlaySettingsVisible(isVisible: boolean) {
+  playSettingsButton.hidden = !isVisible
 }
 
 function setAppMode(mode: AppMode) {
@@ -1220,6 +1239,7 @@ function createSettingsToggleButton(label: string): HTMLButtonElement {
 function enterEditMode() {
   titleScreen.hide()
   shapeSelector.element.hidden = false
+  setPlaySettingsVisible(false)
   setPhysicalPlayActive(false)
   setPhysicalAnswerRevealed(false)
   setAppMode("editor")
@@ -1228,6 +1248,7 @@ function enterEditMode() {
 async function startPhysicalPlay(options: PhysicalSetupOptions) {
   titleScreen.hide()
   shapeSelector.element.hidden = false
+  setPlaySettingsVisible(true)
   setPhysicalPlayActive(true)
   setPhysicalAnswerRevealed(false)
   setShapeColorVisibility(false)
@@ -1263,6 +1284,7 @@ async function startPhysicalPlay(options: PhysicalSetupOptions) {
 
 function returnToTitle() {
   clearSelection()
+  setPlaySettingsVisible(false)
   setPhysicalPlayActive(false)
   setPhysicalAnswerRevealed(false)
   shapeSelector.element.hidden = true
@@ -1271,6 +1293,7 @@ function returnToTitle() {
 
 function returnToPhysicalSetup() {
   clearSelection()
+  setPlaySettingsVisible(false)
   setPhysicalPlayActive(false)
   setPhysicalAnswerRevealed(false)
   shapeSelector.element.hidden = true
@@ -2444,38 +2467,76 @@ function tickTimer() {
   if (timerMode === "down" && timerElapsedSeconds >= countdownSeconds) {
     timerElapsedSeconds = countdownSeconds
     stopTimer()
-    playTimerDoneSound()
+    void playTimerDoneSound()
   }
 
   refreshViewerState()
 }
 
-function playTimerDoneSound() {
+async function playTimerDoneSound() {
   const AudioContextClass = window.AudioContext
 
   if (!AudioContextClass) {
     return
   }
 
-  const audioContext = new AudioContextClass()
-  const notes = [880, 1046, 1318, 1046]
+  const audioContext = alarmAudioContext ?? new AudioContextClass()
 
-  notes.forEach((frequency, index) => {
-    const start = audioContext.currentTime + index * 0.18
+  alarmAudioContext = audioContext
+
+  if (audioContext.state === "suspended") {
+    await audioContext.resume()
+  }
+
+  const masterGain = audioContext.createGain()
+  const compressor = audioContext.createDynamicsCompressor()
+  const start = audioContext.currentTime
+  const volume = Math.max(0.08, appSettings.seVolume / 100)
+
+  masterGain.gain.setValueAtTime(0.0001, start)
+  masterGain.gain.exponentialRampToValueAtTime(0.72 * volume, start + 0.04)
+  masterGain.gain.setValueAtTime(0.72 * volume, start + 2.2)
+  masterGain.gain.exponentialRampToValueAtTime(0.0001, start + 2.6)
+  masterGain.connect(compressor)
+  compressor.connect(audioContext.destination)
+
+  for (let index = 0; index < 8; index += 1) {
+    const pulseStart = start + index * 0.28
+    const pulseEnd = pulseStart + 0.22
     const oscillator = audioContext.createOscillator()
-    const gain = audioContext.createGain()
+    const pulseGain = audioContext.createGain()
+
+    oscillator.type = "sawtooth"
+    oscillator.frequency.setValueAtTime(index % 2 === 0 ? 880 : 1320, pulseStart)
+    oscillator.frequency.exponentialRampToValueAtTime(index % 2 === 0 ? 1320 : 880, pulseEnd)
+    pulseGain.gain.setValueAtTime(0.0001, pulseStart)
+    pulseGain.gain.exponentialRampToValueAtTime(0.95, pulseStart + 0.02)
+    pulseGain.gain.exponentialRampToValueAtTime(0.0001, pulseEnd)
+    oscillator.connect(pulseGain)
+    pulseGain.connect(masterGain)
+    oscillator.start(pulseStart)
+    oscillator.stop(pulseEnd + 0.02)
+  }
+
+  for (let index = 0; index < 4; index += 1) {
+    const pulseStart = start + index * 0.56
+    const oscillator = audioContext.createOscillator()
+    const pulseGain = audioContext.createGain()
 
     oscillator.type = "square"
-    oscillator.frequency.setValueAtTime(frequency, start)
-    gain.gain.setValueAtTime(0.0001, start)
-    gain.gain.exponentialRampToValueAtTime(0.42, start + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14)
+    oscillator.frequency.setValueAtTime(220, pulseStart)
+    pulseGain.gain.setValueAtTime(0.0001, pulseStart)
+    pulseGain.gain.exponentialRampToValueAtTime(0.45, pulseStart + 0.02)
+    pulseGain.gain.exponentialRampToValueAtTime(0.0001, pulseStart + 0.28)
+    oscillator.connect(pulseGain)
+    pulseGain.connect(masterGain)
+    oscillator.start(pulseStart)
+    oscillator.stop(pulseStart + 0.3)
+  }
 
-    oscillator.connect(gain)
-    gain.connect(audioContext.destination)
-    oscillator.start(start)
-    oscillator.stop(start + 0.16)
-  })
+  if ("vibrate" in navigator) {
+    navigator.vibrate([180, 80, 180, 80, 260])
+  }
 }
 
 function refreshViewerState() {

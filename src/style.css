@@ -136,6 +136,14 @@ button {
   background: #ffffff;
 }
 
+.play-settings-button {
+  z-index: 18;
+}
+
+.play-settings-button[hidden] {
+  display: none;
+}
+
 .title-version-label {
   position: absolute;
   left: 22px;
