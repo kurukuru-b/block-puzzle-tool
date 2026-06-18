@@ -88,8 +88,14 @@ type PlacedShapeSnapshot = PlacedShape[]
 type ViewerHintCellResult = { ok: boolean, message: string, color?: number }
 type AppSettings = {
   language: "en" | "ja"
+  bgmMode: "off" | "calm" | "arcade"
   bgmVolume: number
   seVolume: number
+}
+type PhysicalSetupSettings = {
+  difficulty: PuzzleDifficulty
+  timeLimitSeconds: number
+  problemNumber: number | null
 }
 
 const puzzleLibraryStore = createPuzzleLibraryStore(
@@ -795,6 +801,7 @@ function createPhysicalSetupScreen({
   onTitle: () => void
   onStart: (options: PhysicalSetupOptions) => void | Promise<void>
 }): HTMLElement {
+  const initialSettings = loadPhysicalSetupSettings()
   const panel = document.createElement("div")
   panel.className = "physical-setup-screen"
 
@@ -829,6 +836,7 @@ function createPhysicalSetupScreen({
     difficultySelect.appendChild(option)
   }
 
+  difficultySelect.value = initialSettings.difficulty
   difficultyField.appendChild(difficultySelect)
   fields.appendChild(difficultyField)
 
@@ -837,7 +845,7 @@ function createPhysicalSetupScreen({
   timeInput.type = "number"
   timeInput.min = "0"
   timeInput.step = "1"
-  timeInput.value = "300"
+  timeInput.value = String(initialSettings.timeLimitSeconds)
   timeInput.placeholder = "Seconds"
   timeInput.setAttribute("aria-label", "Time limit in seconds")
   timeField.appendChild(timeInput)
@@ -848,12 +856,19 @@ function createPhysicalSetupScreen({
   problemControls.className = "physical-problem-controls"
   problemField.appendChild(problemControls)
 
+  const status = document.createElement("p")
+  status.className = "physical-setup-status"
+  status.textContent = ""
+
   const problemInput = document.createElement("input")
   problemInput.type = "number"
   problemInput.min = "1"
   problemInput.step = "1"
   problemInput.placeholder = "No."
   problemInput.setAttribute("aria-label", "Problem number")
+  problemInput.value = initialSettings.problemNumber === null
+    ? ""
+    : String(initialSettings.problemNumber)
   problemControls.appendChild(problemInput)
 
   const randomButton = document.createElement("button")
@@ -861,10 +876,18 @@ function createPhysicalSetupScreen({
   randomButton.textContent = "Random"
   randomButton.addEventListener("click", () => {
     problemInput.value = ""
+    savePhysicalSetupSettings({
+      difficulty: difficultySelect.value as PuzzleDifficulty,
+      timeLimitSeconds: Math.max(0, Number.parseInt(timeInput.value, 10) || 0),
+      problemNumber: null,
+    })
+    status.textContent = ""
+    status.classList.remove("is-error")
   })
   problemControls.appendChild(randomButton)
 
   fields.appendChild(problemField)
+  content.appendChild(status)
 
   const countdown = document.createElement("div")
   countdown.className = "physical-start-countdown"
@@ -876,15 +899,37 @@ function createPhysicalSetupScreen({
   startButton.className = "physical-start-button"
   startButton.textContent = "Start"
   startButton.addEventListener("click", async () => {
+    const problemNumber = problemInput.value
+      ? Math.max(1, Number.parseInt(problemInput.value, 10) || 1)
+      : null
     const options = {
       difficulty: difficultySelect.value as PuzzleDifficulty,
       timeLimitSeconds: Math.max(0, Number.parseInt(timeInput.value, 10) || 0),
-      problemIndex: problemInput.value
-        ? Math.max(0, Number.parseInt(problemInput.value, 10) - 1)
-        : null,
+      problemIndex: problemNumber === null ? null : problemNumber - 1,
+    }
+    const problemCount = loadPuzzleLibrary()[options.difficulty].length
+
+    savePhysicalSetupSettings({
+      difficulty: options.difficulty,
+      timeLimitSeconds: options.timeLimitSeconds,
+      problemNumber,
+    })
+
+    if (problemCount === 0) {
+      status.textContent = "No registered puzzles for this difficulty."
+      status.classList.add("is-error")
+      return
+    }
+
+    if (problemNumber !== null && problemNumber > problemCount) {
+      status.textContent = `Problem ${problemNumber} does not exist. Choose 1-${problemCount} or Random.`
+      status.classList.add("is-error")
+      return
     }
 
     startButton.disabled = true
+    status.textContent = ""
+    status.classList.remove("is-error")
 
     try {
       await runPhysicalStartCountdown(countdown)
@@ -895,6 +940,20 @@ function createPhysicalSetupScreen({
     }
   })
   content.appendChild(startButton)
+
+  for (const input of [difficultySelect, timeInput, problemInput]) {
+    input.addEventListener("change", () => {
+      savePhysicalSetupSettings({
+        difficulty: difficultySelect.value as PuzzleDifficulty,
+        timeLimitSeconds: Math.max(0, Number.parseInt(timeInput.value, 10) || 0),
+        problemNumber: problemInput.value
+          ? Math.max(1, Number.parseInt(problemInput.value, 10) || 1)
+          : null,
+      })
+      status.textContent = ""
+      status.classList.remove("is-error")
+    })
+  }
 
   return panel
 }
@@ -995,6 +1054,7 @@ function loadAppSettings(): AppSettings {
   if (!rawValue) {
     return {
       language: "en",
+      bgmMode: "off",
       bgmVolume: 80,
       seVolume: 80,
     }
@@ -1005,12 +1065,16 @@ function loadAppSettings(): AppSettings {
 
     return {
       language: parsed.language === "ja" ? "ja" : "en",
+      bgmMode: parsed.bgmMode === "calm" || parsed.bgmMode === "arcade"
+        ? parsed.bgmMode
+        : "off",
       bgmVolume: clampVolume(parsed.bgmVolume),
       seVolume: clampVolume(parsed.seVolume),
     }
   } catch {
     return {
       language: "en",
+      bgmMode: "off",
       bgmVolume: 80,
       seVolume: 80,
     }
@@ -1020,6 +1084,44 @@ function loadAppSettings(): AppSettings {
 function saveAppSettings(settings: AppSettings) {
   appSettings = settings
   window.localStorage.setItem("tricube:v2:settings", JSON.stringify(settings))
+}
+
+function loadPhysicalSetupSettings(): PhysicalSetupSettings {
+  const rawValue = window.localStorage.getItem("tricube:v2:physical-setup")
+
+  if (!rawValue) {
+    return {
+      difficulty: "easy",
+      timeLimitSeconds: 300,
+      problemNumber: null,
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<PhysicalSetupSettings>
+
+    return {
+      difficulty: parsed.difficulty && PUZZLE_DIFFICULTIES.includes(parsed.difficulty)
+        ? parsed.difficulty
+        : "easy",
+      timeLimitSeconds: typeof parsed.timeLimitSeconds === "number"
+        ? Math.max(0, Math.min(9999, Math.round(parsed.timeLimitSeconds)))
+        : 300,
+      problemNumber: typeof parsed.problemNumber === "number" && parsed.problemNumber > 0
+        ? Math.round(parsed.problemNumber)
+        : null,
+    }
+  } catch {
+    return {
+      difficulty: "easy",
+      timeLimitSeconds: 300,
+      problemNumber: null,
+    }
+  }
+}
+
+function savePhysicalSetupSettings(settings: PhysicalSetupSettings) {
+  window.localStorage.setItem("tricube:v2:physical-setup", JSON.stringify(settings))
 }
 
 function clampVolume(value: unknown): number {
@@ -1068,12 +1170,30 @@ function showSettingsDialog() {
   bgmInput.value = String(appSettings.bgmVolume)
   const bgmValue = appendSettingsField(body, "BGM Volume", bgmInput)
 
+  const bgmSelect = document.createElement("select")
+  bgmSelect.value = appSettings.bgmMode
+  appendSettingsField(body, "BGM", bgmSelect)
+
+  for (const [value, label] of [
+    ["off", "Off"],
+    ["calm", "Calm"],
+    ["arcade", "Arcade"],
+  ] as const) {
+    const option = document.createElement("option")
+    option.value = value
+    option.textContent = label
+    bgmSelect.appendChild(option)
+  }
+
   const seInput = document.createElement("input")
   seInput.type = "range"
   seInput.min = "0"
   seInput.max = "100"
   seInput.value = String(appSettings.seVolume)
   const seValue = appendSettingsField(body, "SE Volume", seInput)
+
+  const seTestButton = createSettingsToggleButton("Test SE")
+  appendSettingsField(body, "SE Test", seTestButton)
 
   const visualSection = document.createElement("div")
   visualSection.className = "settings-toggle-grid"
@@ -1099,8 +1219,13 @@ function showSettingsDialog() {
   syncVisualSettingButtons()
 
   languageSelect.addEventListener("change", saveFromControls)
+  bgmSelect.addEventListener("change", saveFromControls)
   bgmInput.addEventListener("input", saveFromControls)
   seInput.addEventListener("input", saveFromControls)
+  seTestButton.addEventListener("click", () => {
+    saveFromControls()
+    void playTimerDoneSound()
+  })
   colorModeButton.addEventListener("click", () => {
     setShapeColorMode(shapeColorMode === "new" ? "old" : "new")
     syncVisualSettingButtons()
@@ -1151,6 +1276,9 @@ function showSettingsDialog() {
   function saveFromControls() {
     saveAppSettings({
       language: languageSelect.value === "ja" ? "ja" : "en",
+      bgmMode: bgmSelect.value === "calm" || bgmSelect.value === "arcade"
+        ? bgmSelect.value
+        : "off",
       bgmVolume: Number(bgmInput.value),
       seVolume: Number(seInput.value),
     })
