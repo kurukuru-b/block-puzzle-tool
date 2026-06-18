@@ -465,14 +465,13 @@ function createPlaySettingsButton(): HTMLButtonElement {
   button.className = "title-icon-button play-settings-button"
   button.setAttribute("aria-label", "Settings")
   button.textContent = "⚙"
-  button.hidden = true
   button.addEventListener("click", showSettingsDialog)
 
   return button
 }
 
-function setPlaySettingsVisible(isVisible: boolean) {
-  playSettingsButton.hidden = !isVisible
+function setPlaySettingsVisible(_isVisible: boolean) {
+  playSettingsButton.hidden = false
 }
 
 function setAppMode(mode: AppMode) {
@@ -690,14 +689,6 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   const element = document.createElement("section")
   element.className = "title-screen"
   element.setAttribute("aria-label", "TRI²CUBE title")
-
-  const settingsButton = document.createElement("button")
-  settingsButton.type = "button"
-  settingsButton.className = "title-icon-button"
-  settingsButton.setAttribute("aria-label", "Settings")
-  settingsButton.textContent = "⚙"
-  settingsButton.addEventListener("click", showSettingsDialog)
-  element.appendChild(settingsButton)
 
   const content = document.createElement("div")
   content.className = "title-screen__content"
@@ -2494,48 +2485,35 @@ async function playTimerDoneSound() {
   const volume = Math.max(0.08, appSettings.seVolume / 100)
 
   masterGain.gain.setValueAtTime(0.0001, start)
-  masterGain.gain.exponentialRampToValueAtTime(0.72 * volume, start + 0.04)
-  masterGain.gain.setValueAtTime(0.72 * volume, start + 2.2)
-  masterGain.gain.exponentialRampToValueAtTime(0.0001, start + 2.6)
+  masterGain.gain.exponentialRampToValueAtTime(0.78 * volume, start + 0.02)
+  masterGain.gain.setValueAtTime(0.78 * volume, start + 2.4)
+  masterGain.gain.exponentialRampToValueAtTime(0.0001, start + 2.55)
   masterGain.connect(compressor)
   compressor.connect(audioContext.destination)
 
-  for (let index = 0; index < 8; index += 1) {
-    const pulseStart = start + index * 0.28
-    const pulseEnd = pulseStart + 0.22
-    const oscillator = audioContext.createOscillator()
-    const pulseGain = audioContext.createGain()
+  for (let group = 0; group < 3; group += 1) {
+    const groupStart = start + group * 0.78
 
-    oscillator.type = "sawtooth"
-    oscillator.frequency.setValueAtTime(index % 2 === 0 ? 880 : 1320, pulseStart)
-    oscillator.frequency.exponentialRampToValueAtTime(index % 2 === 0 ? 1320 : 880, pulseEnd)
-    pulseGain.gain.setValueAtTime(0.0001, pulseStart)
-    pulseGain.gain.exponentialRampToValueAtTime(0.95, pulseStart + 0.02)
-    pulseGain.gain.exponentialRampToValueAtTime(0.0001, pulseEnd)
-    oscillator.connect(pulseGain)
-    pulseGain.connect(masterGain)
-    oscillator.start(pulseStart)
-    oscillator.stop(pulseEnd + 0.02)
-  }
+    for (let beep = 0; beep < 4; beep += 1) {
+      const beepStart = groupStart + beep * 0.105
+      const beepEnd = beepStart + 0.066
+      const oscillator = audioContext.createOscillator()
+      const pulseGain = audioContext.createGain()
 
-  for (let index = 0; index < 4; index += 1) {
-    const pulseStart = start + index * 0.56
-    const oscillator = audioContext.createOscillator()
-    const pulseGain = audioContext.createGain()
-
-    oscillator.type = "square"
-    oscillator.frequency.setValueAtTime(220, pulseStart)
-    pulseGain.gain.setValueAtTime(0.0001, pulseStart)
-    pulseGain.gain.exponentialRampToValueAtTime(0.45, pulseStart + 0.02)
-    pulseGain.gain.exponentialRampToValueAtTime(0.0001, pulseStart + 0.28)
-    oscillator.connect(pulseGain)
-    pulseGain.connect(masterGain)
-    oscillator.start(pulseStart)
-    oscillator.stop(pulseStart + 0.3)
+      oscillator.type = "square"
+      oscillator.frequency.setValueAtTime(beep % 2 === 0 ? 1480 : 1760, beepStart)
+      pulseGain.gain.setValueAtTime(0.0001, beepStart)
+      pulseGain.gain.exponentialRampToValueAtTime(0.95, beepStart + 0.008)
+      pulseGain.gain.exponentialRampToValueAtTime(0.0001, beepEnd)
+      oscillator.connect(pulseGain)
+      pulseGain.connect(masterGain)
+      oscillator.start(beepStart)
+      oscillator.stop(beepEnd + 0.01)
+    }
   }
 
   if ("vibrate" in navigator) {
-    navigator.vibrate([180, 80, 180, 80, 260])
+    navigator.vibrate([70, 45, 70, 45, 70, 45, 70, 250, 70, 45, 70, 45, 70, 45, 70])
   }
 }
 
@@ -2567,6 +2545,7 @@ function getViewerPanelState(): ViewerPanelState {
     timerText: getTimerText(),
     timerMode,
     timerRunning,
+    timerExpired: timerMode === "down" && countdownSeconds > 0 && timerElapsedSeconds >= countdownSeconds,
     countdownSeconds,
     hintShapes: getViewerHintShapeSummaries(selectedPuzzle),
   }

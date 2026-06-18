@@ -59,6 +59,7 @@ export type ViewerPanelState = {
   timerText: string
   timerMode: TimerMode
   timerRunning: boolean
+  timerExpired: boolean
   countdownSeconds: number
   hintShapes: ViewerHintShapeSummary[]
 }
@@ -1461,6 +1462,7 @@ export function createShapeSelector({
     timerOverlayButton.textContent = state.timerRunning ? "Stop" : "Start"
     timerOverlayButton.setAttribute("aria-label", state.timerRunning ? "Stop timer" : "Start timer")
     timerOverlay.classList.toggle("is-running", state.timerRunning)
+    timerOverlay.classList.toggle("is-expired", state.timerExpired)
     timerPanel.classList.toggle("is-running", state.timerRunning)
     timerStartStopButton.textContent = state.timerRunning ? "Stop" : "Start"
     countdownInput.value = String(Math.max(1, state.countdownSeconds))

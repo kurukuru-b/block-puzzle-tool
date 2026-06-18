@@ -137,7 +137,8 @@ button {
 }
 
 .play-settings-button {
-  z-index: 18;
+  z-index: 32;
+  pointer-events: auto;
 }
 
 .play-settings-button[hidden] {
@@ -662,6 +663,15 @@ button {
 .timer-overlay.is-running {
   border-color: rgba(37, 99, 235, 0.38);
   background: rgba(239, 246, 255, 0.9);
+}
+
+.timer-overlay.is-expired {
+  border-color: rgba(220, 38, 38, 0.44);
+  background: rgba(254, 242, 242, 0.92);
+}
+
+.timer-overlay.is-expired .timer-overlay-text {
+  color: #dc2626;
 }
 
 .hint-overlay {
