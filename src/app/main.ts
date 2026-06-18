@@ -693,6 +693,7 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   playButton.type = "button"
   playButton.className = "title-action-button"
   playButton.textContent = "Play"
+  playButton.addEventListener("click", showPlayModeDialog)
   actions.appendChild(playButton)
 
   const versionLabel = document.createElement("span")
@@ -727,6 +728,64 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
     show() {
       element.hidden = false
     },
+  }
+}
+
+function showPlayModeDialog() {
+  const backdrop = document.createElement("div")
+  backdrop.className = "title-dialog-backdrop"
+
+  const dialog = document.createElement("section")
+  dialog.className = "title-dialog play-mode-dialog"
+  dialog.setAttribute("role", "dialog")
+  dialog.setAttribute("aria-modal", "true")
+  dialog.setAttribute("aria-label", "Play mode selection")
+  backdrop.appendChild(dialog)
+
+  const closeButton = document.createElement("button")
+  closeButton.type = "button"
+  closeButton.className = "play-mode-dialog-close"
+  closeButton.setAttribute("aria-label", "Close")
+  closeButton.textContent = "×"
+  closeButton.addEventListener("click", close)
+  dialog.appendChild(closeButton)
+
+  const title = document.createElement("h2")
+  title.textContent = "モードを選択してください"
+  dialog.appendChild(title)
+
+  const actions = document.createElement("div")
+  actions.className = "play-mode-actions"
+  dialog.appendChild(actions)
+
+  for (const mode of ["Physical", "Digital"]) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "play-mode-button"
+    button.textContent = mode
+    button.addEventListener("click", close)
+    actions.appendChild(button)
+  }
+
+  backdrop.addEventListener("click", (event) => {
+    if (event.target === backdrop) {
+      close()
+    }
+  })
+
+  document.addEventListener("keydown", onKeyDown)
+  app!.appendChild(backdrop)
+  closeButton.focus()
+
+  function close() {
+    document.removeEventListener("keydown", onKeyDown)
+    backdrop.remove()
+  }
+
+  function onKeyDown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      close()
+    }
   }
 }
 

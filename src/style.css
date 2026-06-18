@@ -181,11 +181,65 @@ button {
   box-shadow: 0 22px 48px rgba(15, 23, 42, 0.24);
 }
 
+.play-mode-dialog {
+  position: relative;
+  width: min(520px, 100%);
+  padding-top: 52px;
+}
+
+.play-mode-dialog h2 {
+  text-align: center;
+}
+
 .title-dialog h2,
 .register-password-dialog h2 {
   margin: 0;
   font-size: 22px;
   line-height: 1.2;
+}
+
+.play-mode-dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 6px;
+  color: #111827;
+  background: #ffffff;
+  font-size: 22px;
+  font-weight: 850;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.play-mode-dialog-close:hover {
+  background: #f3f4f6;
+}
+
+.play-mode-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.play-mode-button {
+  height: 70px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 8px;
+  color: #ffffff;
+  background: #1f2937;
+  box-shadow: 0 12px 24px rgba(42, 52, 68, 0.16);
+  font-size: 19px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.play-mode-button:hover {
+  background: #111827;
 }
 
 .title-dialog-body {
