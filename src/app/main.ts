@@ -726,6 +726,7 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
 
   const physicalSetup = createPhysicalSetupScreen({
     onTitle: showTitleHome,
+    onStart: startPhysicalPlay,
   })
   physicalSetup.hidden = true
   element.appendChild(physicalSetup)
@@ -756,7 +757,19 @@ function createTitleScreen({ onEdit }: { onEdit: () => void }) {
   }
 }
 
-function createPhysicalSetupScreen({ onTitle }: { onTitle: () => void }): HTMLElement {
+type PhysicalSetupOptions = {
+  difficulty: PuzzleDifficulty
+  timeLimitSeconds: number
+  problemIndex: number | null
+}
+
+function createPhysicalSetupScreen({
+  onTitle,
+  onStart,
+}: {
+  onTitle: () => void
+  onStart: (options: PhysicalSetupOptions) => void
+}): HTMLElement {
   const panel = document.createElement("div")
   panel.className = "physical-setup-screen"
 
@@ -832,6 +845,15 @@ function createPhysicalSetupScreen({ onTitle }: { onTitle: () => void }): HTMLEl
   startButton.type = "button"
   startButton.className = "physical-start-button"
   startButton.textContent = "Start"
+  startButton.addEventListener("click", () => {
+    onStart({
+      difficulty: difficultySelect.value as PuzzleDifficulty,
+      timeLimitSeconds: Math.max(0, Number.parseInt(timeInput.value, 10) || 0),
+      problemIndex: problemInput.value
+        ? Math.max(0, Number.parseInt(problemInput.value, 10) - 1)
+        : null,
+    })
+  })
   content.appendChild(startButton)
 
   return panel
@@ -1078,6 +1100,38 @@ function enterEditMode() {
   titleScreen.hide()
   shapeSelector.element.hidden = false
   setAppMode("editor")
+}
+
+async function startPhysicalPlay(options: PhysicalSetupOptions) {
+  titleScreen.hide()
+  shapeSelector.element.hidden = false
+
+  countdownSeconds = options.timeLimitSeconds
+  setTimerMode("down")
+  resetTimer()
+  setAppMode("viewer")
+  viewerDifficulty = options.difficulty
+
+  await refreshPuzzleLibrary()
+
+  const puzzles = loadPuzzleLibrary()[viewerDifficulty]
+
+  if (puzzles.length === 0) {
+    viewerProblemIndex = 0
+    viewerProblemSelected = false
+  } else if (options.problemIndex === null) {
+    viewerProblemIndex = Math.floor(Math.random() * puzzles.length)
+    viewerProblemSelected = true
+  } else {
+    viewerProblemIndex = clamp(options.problemIndex, 0, puzzles.length - 1)
+    viewerProblemSelected = true
+  }
+
+  if (viewerProblemSelected) {
+    loadSelectedViewerPuzzle()
+  }
+
+  refreshViewerState()
 }
 
 function returnToTitle() {
