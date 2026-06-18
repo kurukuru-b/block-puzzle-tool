@@ -262,7 +262,7 @@ export function createShapeSelector({
   const giveUpButton = document.createElement("button")
   giveUpButton.type = "button"
   giveUpButton.className = "hint-overlay-button physical-give-up-button"
-  giveUpButton.textContent = "Give Up"
+  giveUpButton.textContent = "Check"
   giveUpButton.addEventListener("click", onGiveUpPhysicalPlay)
   timerOverlayActions.appendChild(giveUpButton)
 
